@@ -1,26 +1,63 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cream: #F4EFE3;
+  --cream-2: #FBF8F0;
+  --paper: #FFFFFF;
+  --ink: #16211C;
+  --ink-soft: #56615A;
+  --ink-faint: #8A9189;
+  --teal: #0E6E62;
+  --teal-deep: #0A4A42;
+  --teal-tint: #DBEBE6;
+  --coral: #EE5B36;
+  --coral-deep: #C9421F;
+  --coral-tint: #FBE2D8;
+  --gold: #DC9B2E;
+  --green: #2E9D5C;
+  --line: #E3DAC8;
+  --line-soft: #EDE6D7;
+  --lock: #A89C86;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow: 0 1px 2px rgba(20,33,28,.04), 0 12px 30px -12px rgba(20,33,28,.16);
+  --shadow-lg: 0 30px 60px -24px rgba(20,33,28,.30);
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-body: 'Hanken Grotesk', sans-serif;
+  --font-mono: 'Space Mono', monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  color: var(--ink);
+  line-height: 1.5;
+  background: var(--cream);
+  background-image:
+    radial-gradient(900px 500px at 105% -10%, rgba(14,110,98,.10), transparent 60%),
+    radial-gradient(700px 500px at -10% 110%, rgba(238,91,54,.08), transparent 55%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='1' cy='1' r='1' fill='%2316211c' fill-opacity='0.035'/%3E%3C/svg%3E");
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 60px;
+}
+
+::selection { background: var(--coral); color: #fff; }
+
+@keyframes rise {
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 640px) {
+  .hide-mobile-inline { display: none; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(20px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes toastOut {
+  to { opacity: 0; transform: translateY(12px) scale(.97); }
 }
