@@ -85,7 +85,7 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
         }}>
           {s.profile_picture_url ? (
             <img
-              src={`/api/files/${s.profile_picture_url}`}
+              src={s.profile_picture_url}
               alt={s.full_name}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />

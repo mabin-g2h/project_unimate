@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendRegistrationAcknowledgement } from '@/lib/email';
-import path from 'path';
-import fs from 'fs/promises';
+import { put } from '@vercel/blob';
 
 export const runtime = 'nodejs';
 
@@ -18,8 +17,6 @@ export async function POST(request: NextRequest) {
   if (existing) return NextResponse.json({ error: 'You have already submitted a registration.' }, { status: 409 });
 
   const formData = await request.formData();
-  const uploadDir = path.join(process.cwd(), 'private_uploads');
-  await fs.mkdir(uploadDir, { recursive: true });
 
   async function saveFile(field: string, allowed: string[]): Promise<string | null> {
     const file = formData.get(field) as File | null;
@@ -27,8 +24,8 @@ export async function POST(request: NextRequest) {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     if (!allowed.includes(ext)) return null;
     const filename = `${session!.userId}_${field}_${Date.now()}.${ext}`;
-    await fs.writeFile(path.join(uploadDir, filename), Buffer.from(await file.arrayBuffer()));
-    return filename;
+    const { url } = await put(filename, file, { access: 'public' });
+    return url;
   }
 
   const passportFile = await saveFile('passport', ['pdf']);
