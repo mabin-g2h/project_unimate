@@ -27,7 +27,7 @@ CREATE TABLE student_profiles (
   course_name           VARCHAR(255),
   intake_month          VARCHAR(20),
   intake_year           INTEGER,
-  passport_url          TEXT,           -- filename only, served via /api/files/[filename]
+  passport_url          TEXT,           -- full Vercel Blob URL; deleted from Blob after admin review
   admission_letter_url  TEXT,
   profile_picture_url   TEXT,
   status                VARCHAR(20) DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected'
@@ -89,3 +89,7 @@ CREATE TABLE airlines (
 -- CREATE TABLE courses ( id SERIAL PRIMARY KEY, university_id INTEGER REFERENCES universities(id) ON DELETE CASCADE, name VARCHAR(255) NOT NULL, UNIQUE(university_id, name) );
 -- CREATE TABLE airports ( id SERIAL PRIMARY KEY, label VARCHAR(255) UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW() );
 -- CREATE TABLE airlines ( id SERIAL PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW() );
+
+-- Migration 004 — file storage migrated from local filesystem to Vercel Blob
+-- passport_url, admission_letter_url, profile_picture_url now store full https:// Vercel Blob URLs.
+-- No schema change required; existing TEXT columns already hold the new URL format.

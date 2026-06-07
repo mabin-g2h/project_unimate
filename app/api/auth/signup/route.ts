@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
     }
 
+    await sql`DELETE FROM users WHERE email_verified = false AND verification_expires < NOW()`;
+
     const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;
     if (existing.length > 0) {
       return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const verificationToken = uuid();
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const verificationExpires = new Date(Date.now() + 2 * 60 * 60 * 1000);
     const role = email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'admin' : 'student';
 
     await sql`
