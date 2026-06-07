@@ -33,7 +33,7 @@ function wrap(body: string) {
 }
 
 export async function sendVerificationEmail(to: string, token: string) {
-  const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/verify-email?token=${token}`;
+  const url = `${process.env.APP_URL}/api/auth/verify-email?token=${token}`;
   await transporter.sendMail({
     from: `"Uni Mate" <${process.env.GMAIL_USER}>`,
     to,
@@ -75,7 +75,7 @@ export async function sendRegistrationAcknowledgement(to: string, name: string) 
 }
 
 export async function sendApprovalEmail(to: string, name: string) {
-  const url = `${process.env.NEXT_PUBLIC_APP_URL}/login`;
+  const url = `${process.env.APP_URL}/login`;
   await transporter.sendMail({
     from: `"Uni Mate" <${process.env.GMAIL_USER}>`,
     to,
@@ -94,7 +94,7 @@ export async function sendApprovalEmail(to: string, name: string) {
 }
 
 export async function sendRejectionEmail(to: string, name: string, reason: string) {
-  const url = `${process.env.NEXT_PUBLIC_APP_URL}/login`;
+  const url = `${process.env.APP_URL}/login`;
   await transporter.sendMail({
     from: `"Uni Mate" <${process.env.GMAIL_USER}>`,
     to,
