@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useRegistration } from './context';
 
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -43,8 +44,8 @@ function resizeImage(file: File, maxPx = 400): Promise<File> {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { data: registrationData, setData: setRegistrationData } = useRegistration();
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState<FormState>({
     full_name: '', phone: '', country_of_origin: '', country_of_education: '',
@@ -67,15 +68,33 @@ export default function RegisterPage() {
       if (!user) { router.replace('/login'); return; }
       if (user.registration_status === 'approved') { router.replace('/'); return; }
       if (user.registration_status === 'pending') { router.replace('/pending'); return; }
+      // Restore form state if returning from the consent page
+      if (registrationData) {
+        setForm(registrationData.form);
+        setPassportFile(registrationData.passportFile);
+        setAdmissionFile(registrationData.admissionFile);
+        setProfileFile(registrationData.profileFile);
+        const reader = new FileReader();
+        reader.onload = e => setProfilePreview(e.target?.result as string);
+        reader.readAsDataURL(registrationData.profileFile);
+      }
       setLoading(false);
     });
-  }, [router]);
+  }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetch('/api/options/universities')
       .then(r => r.json())
-      .then(({ universities: list }) => setUniversities(list ?? []));
-  }, []);
+      .then(({ universities: list }) => {
+        const unis: University[] = list ?? [];
+        setUniversities(unis);
+        // Restore available courses if returning from the consent page
+        if (registrationData?.form.university_name) {
+          const uni = unis.find(u => u.name === registrationData.form.university_name);
+          setAvailableCourses(uni?.courses ?? []);
+        }
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(field: keyof FormState, value: string) {
     setForm(f => ({ ...f, [field]: value }));
@@ -96,7 +115,7 @@ export default function RegisterPage() {
     reader.readAsDataURL(resized);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
@@ -107,19 +126,8 @@ export default function RegisterPage() {
     if (!admissionFile) { setError('Please upload your admission letter (PDF).'); return; }
     if (!profileFile) { setError('Please upload a profile photo.'); return; }
 
-    setSubmitting(true);
-    const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-    fd.append('passport', passportFile);
-    fd.append('admission_letter', admissionFile);
-    fd.append('profile_picture', profileFile);
-
-    const res = await fetch('/api/student/register', { method: 'POST', body: fd });
-    const data = await res.json();
-    setSubmitting(false);
-
-    if (!res.ok) { setError(data.error ?? 'Submission failed.'); return; }
-    router.push('/pending');
+    setRegistrationData({ form, passportFile, admissionFile, profileFile });
+    router.push('/register/consent');
   }
 
   if (loading) return (
@@ -213,7 +221,7 @@ export default function RegisterPage() {
                 {availableCourses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </Field>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="two-col-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <Field label="Intake month">
                 <select style={inp} value={form.intake_month} onChange={e => set('intake_month', e.target.value)} required>
                   <option value="">Month</option>
@@ -287,17 +295,13 @@ export default function RegisterPage() {
             </Field>
           </Section>
 
-          <div style={{ background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 18px', marginBottom: 24, fontSize: '.83rem', color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-            By submitting, you confirm that all documents are genuine and accurate. Fraudulent submissions will result in permanent disqualification.
-          </div>
-
-          <button type="submit" disabled={submitting}
+          <button type="submit"
             style={{
               width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-              background: submitting ? 'var(--teal-tint)' : 'var(--teal)', color: '#fff',
-              fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1rem', cursor: submitting ? 'not-allowed' : 'pointer',
+              background: 'var(--teal)', color: '#fff',
+              fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1rem', cursor: 'pointer',
             }}>
-            {submitting ? 'Submitting…' : 'Submit Application'}
+            Continue to Review &amp; Consent →
           </button>
         </form>
       </div>

@@ -53,6 +53,43 @@ body {
   .hide-mobile-inline { display: none; }
 }
 
+/* ── Responsive helpers ─────────────────────────────────────────────────── */
+
+/* Boarding pass: side-by-side on desktop, stacked on mobile */
+.boarding-pass-layout { display: flex; }
+@media (max-width: 600px) {
+  .boarding-pass-layout { flex-direction: column; }
+  .boarding-pass-stub { width: 100% !important; }
+}
+
+/* Admin stats grid: 4 col → 2 col → 1 col */
+@media (max-width: 800px) {
+  .admin-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 460px) {
+  .admin-stats-grid { grid-template-columns: 1fr !important; }
+  /* Student dashboard stats also collapse to 1 col on very small phones */
+  .stats-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Admin table: allow horizontal scroll on narrow screens */
+.admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Flight modal: reduce padding on mobile */
+@media (max-width: 480px) {
+  .modal-inner { padding: 24px 18px !important; }
+}
+
+/* Two-column intake grid: stack on mobile */
+@media (max-width: 480px) {
+  .two-col-sm { grid-template-columns: 1fr !important; }
+}
+
+/* Pending / content cards: tighter padding on small phones */
+@media (max-width: 480px) {
+  .content-card { padding: 28px 20px !important; }
+}
+
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(20px) scale(.96); }
   to { opacity: 1; transform: none; }

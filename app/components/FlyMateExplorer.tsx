@@ -61,7 +61,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
       {/* Controls */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", margin: "18px 0" }}>
         {/* Search */}
-        <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+        <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
           <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", width: 17, height: 17, color: "var(--ink-faint)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
           </svg>

@@ -34,10 +34,10 @@ export default function BoardingPass({
   intakeMonth, intakeYear, flightDetails, onAddFlight,
 }: BoardingPassProps) {
   return (
-    <div style={{
+    <div className="boarding-pass-layout" style={{
       marginTop: 24, background: "var(--paper)", borderRadius: "var(--radius)",
       boxShadow: "var(--shadow)", border: "1px solid var(--line-soft)", overflow: "hidden",
-      display: "flex", position: "relative",
+      position: "relative",
     }}>
       <div style={{ content: '""', position: "absolute", inset: 0, background: "radial-gradient(600px 200px at 100% 0,rgba(14,110,98,.06),transparent 70%)", pointerEvents: "none" }} />
 
@@ -86,7 +86,7 @@ export default function BoardingPass({
       </div>
 
       {/* Stub */}
-      <div style={{
+      <div className="boarding-pass-stub" style={{
         width: 220, flexShrink: 0,
         background: "linear-gradient(160deg,var(--teal-deep),var(--teal))",
         color: "#fff", padding: "24px 22px", position: "relative",

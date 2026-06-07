@@ -18,6 +18,11 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
 
+  const allConsentsAccepted = formData.get('consents_accepted') === 'true';
+  if (!allConsentsAccepted) {
+    return NextResponse.json({ error: 'All consents are required.' }, { status: 400 });
+  }
+
   async function saveFile(field: string, allowed: string[]): Promise<string | null> {
     const file = formData.get(field) as File | null;
     if (!file || file.size === 0) return null;
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest) {
     INSERT INTO student_profiles (
       user_id, full_name, phone, country_of_origin, country_of_education,
       university_name, degree_level, course_name, intake_month, intake_year,
-      passport_url, admission_letter_url, profile_picture_url
+      passport_url, admission_letter_url, profile_picture_url, consented_at
     ) VALUES (
       ${session.userId},
       ${fullName},
@@ -52,7 +57,8 @@ export async function POST(request: NextRequest) {
       ${parseInt(formData.get('intake_year') as string, 10)},
       ${passportFile},
       ${admissionFile},
-      ${profileFile}
+      ${profileFile},
+      NOW()
     )
   `;
 

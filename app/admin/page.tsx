@@ -17,6 +17,8 @@ interface Course { id: number; name: string; }
 interface University { id: number; name: string; courses: Course[]; }
 interface Airport { id: number; label: string; }
 interface Airline { id: number; name: string; }
+interface AdminUser { id: number; email: string; created_at: string; }
+interface AdminInvite { id: string; email: string; expires_at: string; created_at: string; }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   pending:  { bg: '#FEF3C7', color: '#92400E' },
@@ -26,7 +28,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<'students' | 'dropdowns'>('students');
+  const [tab, setTab] = useState<'students' | 'dropdowns' | 'admins'>('students');
 
   // ── Students tab state ────────────────────────────────────────────────────
   const [students, setStudents] = useState<Student[]>([]);
@@ -50,6 +52,15 @@ export default function AdminPage() {
   const [newAirport, setNewAirport] = useState('');
   const [newAirline, setNewAirline] = useState('');
   const [ddError, setDdError] = useState('');
+
+  // ── Admins tab state ──────────────────────────────────────────────────────
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [adminInvites, setAdminInvites] = useState<AdminInvite[]>([]);
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/students');
@@ -79,6 +90,26 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (tab === 'dropdowns') loadDropdowns();
   }, [tab, loadDropdowns]);
+
+  const loadAdmins = useCallback(async () => {
+    setAdminsLoading(true);
+    const res = await fetch('/api/admin/admins');
+    const data = await res.json();
+    setAdminUsers(data.admins ?? []);
+    setAdminInvites(data.invites ?? []);
+    setAdminsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === 'admins') loadAdmins();
+  }, [tab, loadAdmins]);
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      if (d.user?.id) setCurrentUserId(d.user.id);
+    }).catch(() => {});
+  }, []);
 
   // ── Student review actions ────────────────────────────────────────────────
   async function handleReview(action: 'approve' | 'reject') {
@@ -179,6 +210,32 @@ export default function AdminPage() {
     loadDropdowns();
   }
 
+  // ── Admin management actions ──────────────────────────────────────────────
+  async function sendInvite() {
+    if (!inviteEmail.trim()) return;
+    setInviteError(''); setInviteSuccess('');
+    const res = await fetch('/api/admin/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: inviteEmail.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setInviteError(data.error ?? 'Failed to send invite.'); return; }
+    setInviteEmail('');
+    setInviteSuccess('Invite sent successfully.');
+    loadAdmins();
+  }
+
+  async function removeAdmin(id: number) {
+    await fetch(`/api/admin/admins/${id}`, { method: 'DELETE' });
+    loadAdmins();
+  }
+
+  async function revokeInvite(id: string) {
+    await fetch(`/api/admin/admins/invite/${id}`, { method: 'DELETE' });
+    loadAdmins();
+  }
+
   const filtered = students.filter(s => {
     if (filter !== 'all' && (s.status ?? 'no_profile') !== filter) return false;
     if (search) {
@@ -200,7 +257,7 @@ export default function AdminPage() {
       {/* Review modal */}
       {selected && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(22,33,28,.6)', zIndex: 50, overflow: 'auto', padding: '20px' }}>
-          <div style={{ maxWidth: 640, margin: '0 auto', background: 'var(--paper)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}>
+          <div style={{ maxWidth: 640, margin: '0 auto', background: 'var(--paper)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid var(--line)', background: 'var(--cream-2)' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem' }}>
                 {selected.full_name ?? 'No profile submitted'}
@@ -209,7 +266,7 @@ export default function AdminPage() {
                 style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--ink-soft)', lineHeight: 1 }}>×</button>
             </div>
 
-            <div style={{ padding: '24px' }}>
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
               {selected.profile_picture_url && (
                 <div style={{ marginBottom: 20 }}>
                   <img src={selected.profile_picture_url!} alt="Profile"
@@ -289,7 +346,7 @@ export default function AdminPage() {
       {/* Main */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 20px 60px' }}>
         {/* Nav bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--teal)', display: 'grid', placeItems: 'center', transform: 'rotate(-6deg)', boxShadow: '0 4px 10px -3px rgba(14,110,98,.5)' }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -309,7 +366,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, borderBottom: '1px solid var(--line-soft)', paddingBottom: 0 }}>
-          {([['students', 'Student Applications'], ['dropdowns', 'Manage Dropdowns']] as const).map(([key, label]) => (
+          {([['students', 'Student Applications'], ['dropdowns', 'Manage Dropdowns'], ['admins', 'Manage Admins']] as const).map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -329,7 +386,7 @@ export default function AdminPage() {
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-.03em', marginBottom: 6 }}>Student Applications</h1>
             <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Review submitted profiles and approve or reject students.</p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
+            <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
               {([['all','Total',undefined],['pending','Pending','#92400E'],['approved','Approved','var(--green)'],['rejected','Rejected','var(--coral-deep)']] as const).map(([k, label, color]) => (
                 <div key={k} style={{ background: 'var(--paper)', border: '1px solid var(--line-soft)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', cursor: 'pointer', boxShadow: filter === k ? 'var(--shadow)' : 'none', borderColor: filter === k ? 'var(--teal)' : 'var(--line-soft)', transition: '.18s' }}
                   onClick={() => setFilter(k)}>
@@ -357,7 +414,8 @@ export default function AdminPage() {
               </div>
             ) : (
               <div style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', border: '1px solid var(--line-soft)', overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="admin-table-wrap">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
                   <thead>
                     <tr style={{ background: 'var(--cream-2)' }}>
                       {['Name', 'Email', 'University', 'Course', 'Submitted', 'Status', ''].map(h => (
@@ -393,6 +451,81 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Manage Admins tab ── */}
+        {tab === 'admins' && (
+          <>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-.03em', marginBottom: 6 }}>Manage Admins</h1>
+            <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Invite new admins by email and manage existing admin accounts.</p>
+
+            {adminsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                {/* Invite new admin */}
+                <DdSection title="Invite New Admin" hint="Enter an email address to send an admin invitation link (valid for 48 hours).">
+                  {inviteError && (
+                    <div style={{ background: 'var(--coral-tint)', border: '1px solid var(--coral)', borderRadius: 10, padding: '10px 14px', color: 'var(--coral-deep)', fontSize: '.86rem', fontWeight: 600 }}>{inviteError}</div>
+                  )}
+                  {inviteSuccess && (
+                    <div style={{ background: 'var(--teal-tint)', border: '1px solid var(--teal)', borderRadius: 10, padding: '10px 14px', color: 'var(--teal-deep)', fontSize: '.86rem', fontWeight: 600 }}>{inviteSuccess}</div>
+                  )}
+                  <AddRow
+                    placeholder="admin@example.com"
+                    value={inviteEmail}
+                    onChange={v => { setInviteEmail(v); setInviteError(''); setInviteSuccess(''); }}
+                    onAdd={sendInvite}
+                    label="Send Invite"
+                  />
+                </DdSection>
+
+                {/* Current admins */}
+                <DdSection title="Current Admins" hint="Removing admin access demotes the user to a student account.">
+                  {adminUsers.length === 0 && <EmptyHint>No admins found.</EmptyHint>}
+                  {adminUsers.map(a => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', background: 'var(--cream-2)', borderRadius: 8, gap: 10 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: '.9rem' }}>{a.email}</div>
+                        <div style={{ fontSize: '.76rem', color: 'var(--ink-faint)', marginTop: 2 }}>
+                          Joined {new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {a.id === currentUserId && <span style={{ marginLeft: 8, color: 'var(--teal)', fontWeight: 700 }}>(you)</span>}
+                        </div>
+                      </div>
+                      {a.id !== currentUserId && (
+                        <button
+                          onClick={() => removeAdmin(a.id)}
+                          style={{ background: 'none', border: '1px solid var(--coral)', borderRadius: 7, padding: '5px 12px', cursor: 'pointer', color: 'var(--coral)', fontWeight: 700, fontSize: '.8rem', fontFamily: 'var(--font-body)' }}>
+                          Remove admin
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </DdSection>
+
+                {/* Pending invites */}
+                <DdSection title="Pending Invites" hint="Invites expire after 48 hours.">
+                  {adminInvites.length === 0 && <EmptyHint>No pending invites.</EmptyHint>}
+                  {adminInvites.map(inv => (
+                    <div key={inv.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', background: 'var(--cream-2)', borderRadius: 8, gap: 10 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: '.9rem' }}>{inv.email}</div>
+                        <div style={{ fontSize: '.76rem', color: 'var(--ink-faint)', marginTop: 2 }}>
+                          Sent {new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          Expires {new Date(inv.expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      <DeleteBtn onClick={() => revokeInvite(inv.id)} />
+                    </div>
+                  ))}
+                </DdSection>
+
               </div>
             )}
           </>
@@ -560,7 +693,7 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
 // ── Shared sub-components ────────────────────────────────────────────────────
 
 function Grid({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>{children}</div>;
+  return <div className="two-col-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>{children}</div>;
 }
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {

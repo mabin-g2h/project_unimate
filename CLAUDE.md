@@ -33,8 +33,12 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   page.tsx                               # Home dashboard (approved students) — live data from DB
   layout.tsx                             # Root layout; fonts: Bricolage Grotesque, Hanken Grotesk, Space Mono
   /login/page.tsx                        # Combined login + signup toggle
-  /register/page.tsx                     # Student registration form (9 fields + 3 file uploads)
-  /admin/page.tsx                        # Admin review portal
+  /register/layout.tsx                   # 'use client' layout — provides RegistrationContext for /register and /register/consent
+  /register/context.tsx                  # RegistrationContext + RegistrationProvider; holds form fields + File objects in memory across page navigation
+  /register/page.tsx                     # Student registration form (9 fields + 3 file uploads); on submit saves to context and navigates to /register/consent
+  /register/consent/page.tsx             # Consent page: application summary + 4 required checkboxes; POSTs to /api/student/register on accept
+  /admin/page.tsx                        # Admin review portal (3 tabs: Student Applications, Manage Dropdowns, Manage Admins)
+  /accept-invite/page.tsx                # Admin invite acceptance — set password to activate admin account
   /pending/page.tsx                      # Application status view (pending / rejected)
   /verify-email/page.tsx                 # Email verification landing
   /api/
@@ -43,9 +47,13 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     /auth/logout/route.ts                # POST — clear cookie
     /auth/me/route.ts                    # GET  — return current session user + registration status
     /auth/verify-email/route.ts          # GET  — validate token; deletes user row if expired, then redirects; sets session and redirects on success
-    /student/register/route.ts           # POST — FormData with files; inserts student_profiles row
+    /auth/accept-invite/route.ts         # POST — validate invite token, create admin user (email_verified=true, role='admin'), set session cookie; deletes invite row on success
+    /student/register/route.ts           # POST — FormData with files + consents_accepted flag; validates consent, inserts student_profiles row with consented_at = NOW()
     /admin/students/route.ts                          # GET    — list all student applications (admin only)
     /admin/students/[id]/review/route.ts              # POST   — approve/reject; deletes passport+admission letter from Blob; sends email
+    /admin/admins/route.ts                            # GET    — list admin users + pending invites; POST — send admin invite email (48-hour token)
+    /admin/admins/[id]/route.ts                       # DELETE — demote admin to student (cannot remove self)
+    /admin/admins/invite/[id]/route.ts                # DELETE — revoke a pending admin invite
     /admin/options/universities/route.ts              # POST   — create university (admin only)
     /admin/options/universities/[id]/route.ts         # DELETE — remove university (admin only)
     /admin/options/universities/[id]/courses/route.ts # POST   — add course to university (admin only)
@@ -75,7 +83,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 /lib/
   db.ts      # export const sql = neon(process.env.DATABASE_CONNECTION_STRING!)
   auth.ts    # signToken, verifyToken, getSession, makeSessionCookieOptions; SessionPayload interface
-  email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail
+  email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail, sendAdminInviteEmail
 /middleware.ts                           # JWT protection — public allowlist + /admin role guard
 /private_uploads/                        # Local dev placeholder only — production files live in Vercel Blob
 ```
@@ -84,7 +92,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 
 Full schema and migration history: [`db/schema.sql`](./db/schema.sql)
 
-Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false`), `flight_details`
+Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false`, `consented_at TIMESTAMPTZ`), `flight_details`, `universities`, `courses`, `airports`, `airlines`, `admin_invites` (UUID PK, email, token, expires_at, invited_by → users)
 
 ## Hard Rules — Never Break These
 
@@ -92,7 +100,7 @@ Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false
 
 2. **Sensitive documents** (`passport_url`, `admission_letter_url`) must be deleted from Vercel Blob via `del()` immediately after admin approve or reject. `profile_picture_url` is intentionally retained — it is displayed on the dashboard and in the peer directory. See `/api/admin/students/[id]/review/route.ts`.
 
-3. **All API routes** must call `getSession()` before any database operation. Public exceptions: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/verify-email`.
+3. **All API routes** must call `getSession()` before any database operation. Public exceptions: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/verify-email`, `POST /api/auth/accept-invite`.
 
 4. **Admin routes** (`/admin/*` and `/api/admin/*`) must check `session.role === 'admin'`. Student sessions must never access admin routes.
 
@@ -103,7 +111,7 @@ Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false
 ## Auth Middleware Logic
 
 ```
-Public (no auth):  /login, /verify-email, /api/auth/*
+Public (no auth):  /login, /verify-email, /accept-invite, /api/auth/*
 Admin only:        /admin/* → role must be 'admin', else redirect /
 Protected:         all other routes → valid auth-token cookie required, else redirect /login
 ```
@@ -150,6 +158,8 @@ BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add 
 - Phone sharing toggle on dashboard; phone masked in peer query unless `share_phone = true`
 - Admin-managed dropdown options: universities (with nested courses), airports, airlines — full CRUD via `/api/admin/options/*`
 - Student-facing dropdown APIs: `/api/options/universities`, `/api/options/airports`, `/api/options/airlines`
+- Consent flow: after filling the registration form students are taken to `/register/consent` where they must accept 4 required consent declarations (document storage, profile picture, email sharing, phone collection) before submission; `consented_at` timestamp recorded in DB
+- Admin invite-by-email: admins can invite new admins via the "Manage Admins" tab; invite link (48-hour expiry) sent by email; recipient sets password at `/accept-invite`; admin accounts skip email verification; admins can also revoke pending invites and demote existing admins
 - Deployed to Vercel; email links use `APP_URL` env var
 
 ## Out of Scope (Do Not Build)

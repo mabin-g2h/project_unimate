@@ -78,20 +78,23 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
       onClick={onClose}
     >
       <div
+        className="modal-inner"
         style={{
           background: "var(--paper)", borderRadius: "var(--radius)",
           padding: "32px 28px", width: "100%", maxWidth: 460,
           boxShadow: "var(--shadow-lg)", position: "relative",
+          maxHeight: "90vh", overflowY: "auto",
         }}
         onClick={e => e.stopPropagation()}
       >
         <button
           onClick={onClose}
           style={{
-            position: "absolute", top: 16, right: 16,
+            position: "absolute", top: 14, right: 14,
             border: "none", background: "var(--cream-2)", borderRadius: 8,
-            padding: "6px 10px", cursor: "pointer", color: "var(--ink-soft)",
+            padding: "10px 12px", cursor: "pointer", color: "var(--ink-soft)",
             fontWeight: 700, fontSize: ".9rem", lineHeight: 1,
+            minWidth: 44, minHeight: 44, display: "grid", placeItems: "center",
           }}
         >
           ✕

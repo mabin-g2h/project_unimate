@@ -47,7 +47,7 @@ export default function PendingPage() {
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.3rem', letterSpacing: '-.02em' }}>Uni Mate</div>
         </div>
 
-        <div style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line-soft)', padding: '40px 36px' }}>
+        <div className="content-card" style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line-soft)', padding: '40px 36px' }}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>{isRejected ? '❌' : '⏳'}</div>
 
           <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', letterSpacing: '-.02em', marginBottom: 10 }}>

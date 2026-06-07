@@ -3,7 +3,7 @@ import { jwtVerify } from 'jose';
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
-const PUBLIC = ['/login', '/verify-email', '/api/auth'];
+const PUBLIC = ['/login', '/verify-email', '/accept-invite', '/api/auth'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
