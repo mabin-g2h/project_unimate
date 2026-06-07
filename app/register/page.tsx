@@ -2,9 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
-
-const CameraCapture = dynamic(() => import('../components/CameraCapture'), { ssr: false });
 
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -21,12 +18,34 @@ interface FormState {
   course_name: string; intake_month: string; intake_year: string;
 }
 
+function resizeImage(file: File, maxPx = 400): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        if (!blob) return reject(new Error('resize failed'));
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [showCamera, setShowCamera] = useState(false);
   const [form, setForm] = useState<FormState>({
     full_name: '', phone: '', country_of_origin: '', country_of_education: '',
     university_name: '', degree_level: '', course_name: '', intake_month: '', intake_year: '',
@@ -69,11 +88,12 @@ export default function RegisterPage() {
     setAvailableCourses(uni?.courses ?? []);
   }
 
-  function handleProfileFile(file: File) {
-    setProfileFile(file);
+  async function handleProfileFile(file: File) {
+    const resized = await resizeImage(file);
+    setProfileFile(resized);
     const reader = new FileReader();
     reader.onload = e => setProfilePreview(e.target?.result as string);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(resized);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -85,7 +105,7 @@ export default function RegisterPage() {
     }
     if (!passportFile) { setError('Please upload your passport (PDF).'); return; }
     if (!admissionFile) { setError('Please upload your admission letter (PDF).'); return; }
-    if (!profileFile) { setError('Please upload or take a profile photo.'); return; }
+    if (!profileFile) { setError('Please upload a profile photo.'); return; }
 
     setSubmitting(true);
     const fd = new FormData();
@@ -110,13 +130,6 @@ export default function RegisterPage() {
 
   return (
     <>
-      {showCamera && (
-        <CameraCapture
-          onCapture={f => { handleProfileFile(f); setShowCamera(false); }}
-          onClose={() => setShowCamera(false)}
-        />
-      )}
-
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px 60px' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
@@ -263,20 +276,13 @@ export default function RegisterPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button type="button" onClick={() => profileRef.current?.click()}
-                    style={{ flex: 1, ...uploadBox, flexDirection: 'row', cursor: 'pointer', justifyContent: 'center' }}>
-                    <input ref={profileRef} type="file" accept="image/jpeg,image/png,image/jpg" style={{ display: 'none' }}
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleProfileFile(f); }} />
-                    <span style={{ fontSize: 18 }}>🖼️</span>
-                    <span style={{ fontSize: '.84rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Upload photo</span>
-                  </button>
-                  <button type="button" onClick={() => setShowCamera(true)}
-                    style={{ flex: 1, ...uploadBox, flexDirection: 'row', cursor: 'pointer', justifyContent: 'center', background: 'var(--cream-2)' }}>
-                    <span style={{ fontSize: 18 }}>📷</span>
-                    <span style={{ fontSize: '.84rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Take selfie</span>
-                  </button>
-                </div>
+                <button type="button" onClick={() => profileRef.current?.click()}
+                  style={{ width: '100%', ...uploadBox, flexDirection: 'row', cursor: 'pointer', justifyContent: 'center' }}>
+                  <input ref={profileRef} type="file" accept="image/jpeg,image/png,image/jpg" style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleProfileFile(f); }} />
+                  <span style={{ fontSize: 18 }}>🖼️</span>
+                  <span style={{ fontSize: '.84rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Upload photo</span>
+                </button>
               )}
             </Field>
           </Section>

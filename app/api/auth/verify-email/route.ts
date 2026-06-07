@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (new Date(user.verification_expires) < new Date()) {
+    await sql`DELETE FROM users WHERE id = ${user.id}`;
     return NextResponse.redirect(new URL('/verify-email?error=expired', request.url));
   }
 

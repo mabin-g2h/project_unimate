@@ -23,7 +23,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 - **Auth**: Custom JWT — `jose` library, HS256, 7-day expiry, stored as `auth-token` HttpOnly cookie
 - **Passwords**: `bcryptjs` (rounds: 12)
 - **Email**: Nodemailer via Gmail SMTP
-- **File storage**: Local `/private_uploads/` directory — served via `/api/files/[filename]`
+- **File storage**: Vercel Blob (`@vercel/blob`) — public URLs stored in DB; `put()` on upload, `del()` on admin review
 - **IDs**: `uuid` v14 (used for verification tokens)
 
 ## Project Structure
@@ -38,15 +38,26 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   /pending/page.tsx                      # Application status view (pending / rejected)
   /verify-email/page.tsx                 # Email verification landing
   /api/
-    /auth/signup/route.ts                # POST — create account, hash password, send verification email
+    /auth/signup/route.ts                # POST — create account, hash password, send verification email; purges all expired+unverified rows before duplicate check; 2-hour expiry window
     /auth/login/route.ts                 # POST — authenticate, set auth-token cookie
     /auth/logout/route.ts                # POST — clear cookie
     /auth/me/route.ts                    # GET  — return current session user + registration status
-    /auth/verify-email/route.ts          # GET  — validate token, set session, redirect
+    /auth/verify-email/route.ts          # GET  — validate token; deletes user row if expired, then redirects; sets session and redirects on success
     /student/register/route.ts           # POST — FormData with files; inserts student_profiles row
-    /admin/students/route.ts             # GET  — list all student applications (admin only)
-    /admin/students/[id]/review/route.ts # POST — approve/reject; deletes passport+admission letter only; sends email
-    /files/[filename]/route.ts           # GET  — serve file; profile pictures visible to all auth'd students; other files owner-only
+    /admin/students/route.ts                          # GET    — list all student applications (admin only)
+    /admin/students/[id]/review/route.ts              # POST   — approve/reject; deletes passport+admission letter from Blob; sends email
+    /admin/options/universities/route.ts              # POST   — create university (admin only)
+    /admin/options/universities/[id]/route.ts         # DELETE — remove university (admin only)
+    /admin/options/universities/[id]/courses/route.ts # POST   — add course to university (admin only)
+    /admin/options/courses/[id]/route.ts              # DELETE — remove course (admin only)
+    /admin/options/airports/route.ts                  # POST   — create airport (admin only)
+    /admin/options/airports/[id]/route.ts             # DELETE — remove airport (admin only)
+    /admin/options/airlines/route.ts                  # POST   — create airline (admin only)
+    /admin/options/airlines/[id]/route.ts             # DELETE — remove airline (admin only)
+    /files/[filename]/route.ts                        # Retired — returns 410; files now served directly from Vercel Blob URLs
+    /options/universities/route.ts                    # GET    — list universities + nested courses (authenticated students)
+    /options/airports/route.ts                        # GET    — list airports (authenticated students)
+    /options/airlines/route.ts                        # GET    — list airlines (authenticated students)
     /students/me/route.ts                # GET  — own approved profile + flight details
     /students/peers/route.ts             # GET  — approved peers at same university (phone masked unless share_phone)
     /students/flight/route.ts            # GET/POST — upsert own flight details
@@ -58,7 +69,6 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     StudentCard.tsx                      # Individual peer card; exports Peer interface
     FlightDetailsModal.tsx               # Modal form: departure, arrival, date, airline; exports FlightDetails interface
     Services.tsx                         # Services hub (4 cards)
-    CameraCapture.tsx                    # Selfie capture via getUserMedia
     Toast.tsx                            # useToast() hook, auto-dismiss 3.6s
   /data/
     students.ts                          # Static demo data (unused; kept for reference)
@@ -67,7 +77,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   auth.ts    # signToken, verifyToken, getSession, makeSessionCookieOptions; SessionPayload interface
   email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail
 /middleware.ts                           # JWT protection — public allowlist + /admin role guard
-/private_uploads/                        # Runtime file storage (not committed)
+/private_uploads/                        # Local dev placeholder only — production files live in Vercel Blob
 ```
 
 ## Database Schema
@@ -80,13 +90,13 @@ Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false
 
 1. **Peer directory queries** must never return: `phone`, `password_hash`, `passport_url`, `admission_letter_url`, `rejection_reason`, `reviewed_by`. Safe fields: `full_name`, `email`, `course_name`, `intake_month`, `intake_year`, `country_of_origin`, `degree_level`, `university_name`, `profile_picture_url`.
 
-2. **Sensitive documents** (`passport_url`, `admission_letter_url`) must be deleted from `/private_uploads/` immediately after admin approve or reject. `profile_picture_url` is intentionally retained — it is displayed on the dashboard and in the peer directory. See `/api/admin/students/[id]/review/route.ts`.
+2. **Sensitive documents** (`passport_url`, `admission_letter_url`) must be deleted from Vercel Blob via `del()` immediately after admin approve or reject. `profile_picture_url` is intentionally retained — it is displayed on the dashboard and in the peer directory. See `/api/admin/students/[id]/review/route.ts`.
 
 3. **All API routes** must call `getSession()` before any database operation. Public exceptions: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/verify-email`.
 
 4. **Admin routes** (`/admin/*` and `/api/admin/*`) must check `session.role === 'admin'`. Student sessions must never access admin routes.
 
-5. **File serving** at `/api/files/[filename]`: admins may view any file. For students: files whose name contains `_profile_picture_` are accessible to any authenticated student (peer directory use). All other files (passport, admission letter) are owner-only — filename must start with the student's own `userId`.
+5. **File URLs** stored in the DB (`passport_url`, `admission_letter_url`, `profile_picture_url`) are full Vercel Blob `https://` URLs. Use them directly as `src`/`href` — do not route through `/api/files/`. Profile pictures are public blob URLs visible to any authenticated student; passport and admission letter blobs are deleted after review.
 
 6. **Env vars** are accessed via `process.env` directly. Never hardcode secrets or connection strings. All vars must be present at runtime — the non-null assertions (`!`) will throw if missing.
 
@@ -112,6 +122,7 @@ GMAIL_USER                   # Gmail sender address
 GMAIL_APP_PASSWORD           # Gmail app password (not account password)
 APP_URL                      # Base URL used in email links (e.g. http://localhost:3000)
 ADMIN_EMAIL                  # Email auto-assigned role='admin' at signup
+BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add to .env.local for dev)
 ```
 
 ## Conventions
@@ -125,20 +136,21 @@ ADMIN_EMAIL                  # Email auto-assigned role='admin' at signup
 ## Known Gaps (not MVP-blocking for auth/admin flows)
 
 - **No server-side field validation** in `/api/student/register` — fields are inserted as-is. Add presence/length checks before the SQL insert.
-- **`npm run lint`** runs `eslint` with no path — confirm it resolves correctly under ESLint 9 flat config; use `npx eslint .` if not.
 
 ## Phase 1 Scope — What Exists
 
-- Signup → email verification → login/logout (with sign-out button in Navbar)
-- Student registration form with passport, admission letter, and profile photo upload
-- Camera capture for selfie
+- Signup → email verification (2-hour expiry; expired rows auto-deleted) → login/logout (with sign-out button in Navbar)
+- Student registration form with passport, admission letter, and profile photo upload (photo resized client-side to max 400 px before upload)
 - Admin review queue (approve / reject with reason + file deletion)
 - Email notifications: verification link, registration acknowledgement, approved, rejected
-- Private file serving with per-user access control
+- File uploads via Vercel Blob (public URLs); sensitive documents deleted from Blob after admin review
 - Live peer directory: real approved students at same university, profile photos, email + opt-in phone
 - Boarding pass: real profile data + flight details (departure, arrival, date, airline)
 - Flight details form: students enter their flight info; "Same flight day" badge on peer cards
 - Phone sharing toggle on dashboard; phone masked in peer query unless `share_phone = true`
+- Admin-managed dropdown options: universities (with nested courses), airports, airlines — full CRUD via `/api/admin/options/*`
+- Student-facing dropdown APIs: `/api/options/universities`, `/api/options/airports`, `/api/options/airlines`
+- Deployed to Vercel; email links use `APP_URL` env var
 
 ## Out of Scope (Do Not Build)
 
