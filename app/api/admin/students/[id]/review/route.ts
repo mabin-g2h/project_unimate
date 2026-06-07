@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendApprovalEmail, sendRejectionEmail } from '@/lib/email';
-import path from 'path';
-import fs from 'fs/promises';
+import { del } from '@vercel/blob';
 
 export const runtime = 'nodejs';
 
@@ -45,12 +44,10 @@ export async function POST(
     WHERE id = ${profileId}
   `;
 
-  // Delete sensitive documents; profile picture is retained for peer directory
-  const uploadDir = path.join(process.cwd(), 'private_uploads');
-  for (const f of [profile.passport_url, profile.admission_letter_url]) {
-    if (f) {
-      try { await fs.unlink(path.join(uploadDir, f)); } catch { /* already gone */ }
-    }
+  // Delete sensitive documents from Vercel Blob; profile picture is retained for peer directory
+  const toDelete = [profile.passport_url, profile.admission_letter_url].filter(Boolean) as string[];
+  if (toDelete.length) {
+    try { await del(toDelete); } catch { /* already gone */ }
   }
 
   if (action === 'approve') {

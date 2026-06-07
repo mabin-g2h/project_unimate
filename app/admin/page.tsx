@@ -212,7 +212,7 @@ export default function AdminPage() {
             <div style={{ padding: '24px' }}>
               {selected.profile_picture_url && (
                 <div style={{ marginBottom: 20 }}>
-                  <img src={`/api/files/${selected.profile_picture_url}`} alt="Profile"
+                  <img src={selected.profile_picture_url!} alt="Profile"
                     style={{ width: 80, height: 80, borderRadius: 16, objectFit: 'cover', border: '2px solid var(--line)' }} />
                 </div>
               )}
@@ -240,10 +240,10 @@ export default function AdminPage() {
                     <div style={{ fontWeight: 700, fontSize: '.82rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Documents</div>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       {selected.passport_url && (
-                        <a href={`/api/files/${selected.passport_url}`} target="_blank" rel="noreferrer" style={docBtn}>📄 View Passport</a>
+                        <a href={selected.passport_url!} target="_blank" rel="noreferrer" style={docBtn}>📄 View Passport</a>
                       )}
                       {selected.admission_letter_url && (
-                        <a href={`/api/files/${selected.admission_letter_url}`} target="_blank" rel="noreferrer" style={docBtn}>📋 Admission Letter</a>
+                        <a href={selected.admission_letter_url!} target="_blank" rel="noreferrer" style={docBtn}>📋 Admission Letter</a>
                       )}
                       {!selected.passport_url && !selected.admission_letter_url && (
                         <span style={{ color: 'var(--ink-faint)', fontSize: '.86rem' }}>Documents deleted after review</span>
