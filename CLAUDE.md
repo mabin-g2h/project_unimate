@@ -1,1 +1,145 @@
 @AGENTS.md
+
+# UniMate
+
+India's student community platform for studying abroad. Connects Indian students from offer letter through graduation.
+
+## Commands
+
+```bash
+npm run dev          # Start development server (port 3000)
+npm run build        # Production build
+npm run lint         # ESLint check
+npx tsc --noEmit     # TypeScript check (no typecheck script in package.json)
+```
+
+Run `npx tsc --noEmit && npm run lint` before marking any task complete.
+
+## Tech Stack
+
+- **Framework**: Next.js 16.2.7, React 19.2.4, TypeScript 5.9.3 strict mode
+- **Styling**: Tailwind CSS 4, inline CSS variables (`--teal #0E6E62`, `--coral #EE5B36`, `--ink`, etc.)
+- **Database**: Neon serverless PostgreSQL (`@neondatabase/serverless`) — raw SQL via tagged `sql` template literal
+- **Auth**: Custom JWT — `jose` library, HS256, 7-day expiry, stored as `auth-token` HttpOnly cookie
+- **Passwords**: `bcryptjs` (rounds: 12)
+- **Email**: Nodemailer via Gmail SMTP
+- **File storage**: Local `/private_uploads/` directory — served via `/api/files/[filename]`
+- **IDs**: `uuid` v14 (used for verification tokens)
+
+## Project Structure
+
+```
+/app
+  page.tsx                               # Home dashboard (approved students) — live data from DB
+  layout.tsx                             # Root layout; fonts: Bricolage Grotesque, Hanken Grotesk, Space Mono
+  /login/page.tsx                        # Combined login + signup toggle
+  /register/page.tsx                     # Student registration form (9 fields + 3 file uploads)
+  /admin/page.tsx                        # Admin review portal
+  /pending/page.tsx                      # Application status view (pending / rejected)
+  /verify-email/page.tsx                 # Email verification landing
+  /api/
+    /auth/signup/route.ts                # POST — create account, hash password, send verification email
+    /auth/login/route.ts                 # POST — authenticate, set auth-token cookie
+    /auth/logout/route.ts                # POST — clear cookie
+    /auth/me/route.ts                    # GET  — return current session user + registration status
+    /auth/verify-email/route.ts          # GET  — validate token, set session, redirect
+    /student/register/route.ts           # POST — FormData with files; inserts student_profiles row
+    /admin/students/route.ts             # GET  — list all student applications (admin only)
+    /admin/students/[id]/review/route.ts # POST — approve/reject; deletes passport+admission letter only; sends email
+    /files/[filename]/route.ts           # GET  — serve file; profile pictures visible to all auth'd students; other files owner-only
+    /students/me/route.ts                # GET  — own approved profile + flight details
+    /students/peers/route.ts             # GET  — approved peers at same university (phone masked unless share_phone)
+    /students/flight/route.ts            # GET/POST — upsert own flight details
+    /students/share-phone/route.ts       # PUT  — toggle share_phone boolean
+  /components/
+    Navbar.tsx                           # Sticky nav with real user info + sign-out button
+    BoardingPass.tsx                     # Boarding-pass card — real profile + flight details; accepts FlightDetails props
+    FlyMateExplorer.tsx                  # Peer discovery + filtering UI — live DB data; accepts Peer[] prop
+    StudentCard.tsx                      # Individual peer card; exports Peer interface
+    FlightDetailsModal.tsx               # Modal form: departure, arrival, date, airline; exports FlightDetails interface
+    Services.tsx                         # Services hub (4 cards)
+    CameraCapture.tsx                    # Selfie capture via getUserMedia
+    Toast.tsx                            # useToast() hook, auto-dismiss 3.6s
+  /data/
+    students.ts                          # Static demo data (unused; kept for reference)
+/lib/
+  db.ts      # export const sql = neon(process.env.DATABASE_CONNECTION_STRING!)
+  auth.ts    # signToken, verifyToken, getSession, makeSessionCookieOptions; SessionPayload interface
+  email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail
+/middleware.ts                           # JWT protection — public allowlist + /admin role guard
+/private_uploads/                        # Runtime file storage (not committed)
+```
+
+## Database Schema
+
+Full schema and migration history: [`db/schema.sql`](./db/schema.sql)
+
+Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false`), `flight_details`
+
+## Hard Rules — Never Break These
+
+1. **Peer directory queries** must never return: `phone`, `password_hash`, `passport_url`, `admission_letter_url`, `rejection_reason`, `reviewed_by`. Safe fields: `full_name`, `email`, `course_name`, `intake_month`, `intake_year`, `country_of_origin`, `degree_level`, `university_name`, `profile_picture_url`.
+
+2. **Sensitive documents** (`passport_url`, `admission_letter_url`) must be deleted from `/private_uploads/` immediately after admin approve or reject. `profile_picture_url` is intentionally retained — it is displayed on the dashboard and in the peer directory. See `/api/admin/students/[id]/review/route.ts`.
+
+3. **All API routes** must call `getSession()` before any database operation. Public exceptions: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/verify-email`.
+
+4. **Admin routes** (`/admin/*` and `/api/admin/*`) must check `session.role === 'admin'`. Student sessions must never access admin routes.
+
+5. **File serving** at `/api/files/[filename]`: admins may view any file. For students: files whose name contains `_profile_picture_` are accessible to any authenticated student (peer directory use). All other files (passport, admission letter) are owner-only — filename must start with the student's own `userId`.
+
+6. **Env vars** are accessed via `process.env` directly. Never hardcode secrets or connection strings. All vars must be present at runtime — the non-null assertions (`!`) will throw if missing.
+
+## Auth Middleware Logic
+
+```
+Public (no auth):  /login, /verify-email, /api/auth/*
+Admin only:        /admin/* → role must be 'admin', else redirect /
+Protected:         all other routes → valid auth-token cookie required, else redirect /login
+```
+
+Post-login redirect logic (client-side `useEffect` via `/api/auth/me`):
+- `role === 'admin'` → `/admin`
+- No `registration_status` (no profile yet) → `/register`
+- `registration_status !== 'approved'` → `/pending`
+
+## Environment Variables
+
+```
+DATABASE_CONNECTION_STRING   # Neon PostgreSQL connection string
+JWT_SECRET                   # Signing key for auth-token JWT
+GMAIL_USER                   # Gmail sender address
+GMAIL_APP_PASSWORD           # Gmail app password (not account password)
+APP_URL                      # Base URL used in email links (e.g. http://localhost:3000)
+ADMIN_EMAIL                  # Email auto-assigned role='admin' at signup
+```
+
+## Conventions
+
+- Server components by default. Add `'use client'` only when using hooks or browser APIs.
+- Email sends are fire-and-forget — never block a response waiting for email confirmation.
+- Design tokens are CSS variables — use `var(--teal)`, `var(--coral)`, etc. rather than hardcoding colours.
+- Neon `sql` is a tagged template literal with automatic parameterisation — always pass values as template interpolations, never via string concatenation.
+- Catch database errors as `Error` — check `err.message` for Neon constraint violations (unique email → Postgres code `23505`).
+
+## Known Gaps (not MVP-blocking for auth/admin flows)
+
+- **No server-side field validation** in `/api/student/register` — fields are inserted as-is. Add presence/length checks before the SQL insert.
+- **`npm run lint`** runs `eslint` with no path — confirm it resolves correctly under ESLint 9 flat config; use `npx eslint .` if not.
+
+## Phase 1 Scope — What Exists
+
+- Signup → email verification → login/logout (with sign-out button in Navbar)
+- Student registration form with passport, admission letter, and profile photo upload
+- Camera capture for selfie
+- Admin review queue (approve / reject with reason + file deletion)
+- Email notifications: verification link, registration acknowledgement, approved, rejected
+- Private file serving with per-user access control
+- Live peer directory: real approved students at same university, profile photos, email + opt-in phone
+- Boarding pass: real profile data + flight details (departure, arrival, date, airline)
+- Flight details form: students enter their flight info; "Same flight day" badge on peer cards
+- Phone sharing toggle on dashboard; phone masked in peer query unless `share_phone = true`
+
+## Out of Scope (Do Not Build)
+
+Career hub, PR calculator, job board, marketplace, events ticketing, senior mentors, Google OAuth, in-app messaging, automated OCR, AWS S3/SES migration, Prisma migration, setup-password JWT flow, archived/expired status, affiliate consents.
