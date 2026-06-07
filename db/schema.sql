@@ -35,7 +35,8 @@ CREATE TABLE student_profiles (
   reviewed_at           TIMESTAMPTZ,
   reviewed_by           INTEGER REFERENCES users(id),
   rejection_reason      TEXT,
-  share_phone           BOOLEAN DEFAULT false           -- student opt-in to share phone with peers
+  share_phone           BOOLEAN DEFAULT false,          -- student opt-in to share phone with peers
+  consented_at          TIMESTAMPTZ                      -- set at registration; NULL = no consent recorded
 );
 
 CREATE TABLE flight_details (
@@ -47,6 +48,17 @@ CREATE TABLE flight_details (
   airline        VARCHAR(100),   -- e.g. "Emirates"
   created_at     TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─── Admin invite table ───────────────────────────────────────────────────────
+
+CREATE TABLE admin_invites (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      VARCHAR(255) UNIQUE NOT NULL,
+  token      VARCHAR(255) UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  invited_by INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─── Reference / dropdown tables ─────────────────────────────────────────────
@@ -93,3 +105,9 @@ CREATE TABLE airlines (
 -- Migration 004 — file storage migrated from local filesystem to Vercel Blob
 -- passport_url, admission_letter_url, profile_picture_url now store full https:// Vercel Blob URLs.
 -- No schema change required; existing TEXT columns already hold the new URL format.
+
+-- Migration 005 — consent timestamp (added with consent flow before registration submission)
+-- ALTER TABLE student_profiles ADD COLUMN consented_at TIMESTAMPTZ;
+
+-- Migration 006 — admin invite-by-email flow
+-- CREATE TABLE admin_invites ( id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL, token VARCHAR(255) UNIQUE NOT NULL, expires_at TIMESTAMPTZ NOT NULL, invited_by INT REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMPTZ DEFAULT NOW() );

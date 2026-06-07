@@ -93,6 +93,24 @@ export async function sendApprovalEmail(to: string, name: string) {
   });
 }
 
+export async function sendAdminInviteEmail(to: string, inviteUrl: string) {
+  await transporter.sendMail({
+    from: `"Uni Mate" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: "You've been invited to join Uni Mate as an admin",
+    html: wrap(`
+      <h2 style="color:#16211C;font-size:22px;font-weight:800;margin:0 0 12px;">Admin Invitation</h2>
+      <p style="color:#56615A;font-size:15px;line-height:1.6;margin:0 0 28px;">
+        You've been invited to join the <strong>Uni Mate</strong> admin portal. Click the button below to set your password and activate your account.
+      </p>
+      <a href="${inviteUrl}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-bottom:24px;">
+        Accept Invitation
+      </a>
+      <p style="color:#8A9189;font-size:13px;margin:16px 0 0;">This invitation expires in 48 hours. If you were not expecting this email, you can safely ignore it.</p>
+    `),
+  });
+}
+
 export async function sendRejectionEmail(to: string, name: string, reason: string) {
   const url = `${process.env.APP_URL}/login`;
   await transporter.sendMail({

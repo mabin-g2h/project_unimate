@@ -246,6 +246,7 @@ export default function Home() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @media (max-width: 680px) { .stats-grid { grid-template-columns: repeat(2,1fr) !important; } }
+        @media (max-width: 460px) { .stats-grid { grid-template-columns: 1fr !important; } }
         @media (max-width: 860px) { .svc-grid { grid-template-columns: repeat(2,1fr) !important; } }
         @media (max-width: 460px) { .svc-grid { grid-template-columns: 1fr !important; } }
         .svc-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--teal) !important; }

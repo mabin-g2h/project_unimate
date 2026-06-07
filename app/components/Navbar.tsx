@@ -25,7 +25,7 @@ export default function Navbar({ name, university }: NavbarProps) {
       background: "rgba(244,239,227,.82)",
       borderBottom: "1px solid var(--line)",
     }}>
-      <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 66, maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
+      <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 60, maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
           <div style={{
             width: 38, height: 38, borderRadius: 11, background: "var(--teal)",
@@ -74,9 +74,10 @@ export default function Navbar({ name, university }: NavbarProps) {
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               border: "1px solid var(--line)", background: "var(--cream-2)",
-              borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+              borderRadius: 10, padding: "10px 14px", cursor: "pointer",
               fontFamily: "var(--font-body)", fontWeight: 600, fontSize: ".8rem",
               color: "var(--ink-soft)", transition: ".18s",
+              minHeight: 44, minWidth: 44,
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
