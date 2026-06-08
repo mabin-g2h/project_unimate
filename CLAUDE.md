@@ -24,7 +24,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 - **Passwords**: `bcryptjs` (rounds: 12)
 - **Email**: Nodemailer via Gmail SMTP
 - **File storage**: Vercel Blob (`@vercel/blob`) — public URLs stored in DB; `put()` on upload, `del()` on admin review
-- **IDs**: `uuid` v14 (used for verification tokens)
+- **IDs**: `uuid` v14 (used for email-verification and password-reset tokens)
 
 ## Project Structure
 
@@ -35,12 +35,14 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   /login/page.tsx                        # Combined login + signup toggle
   /register/layout.tsx                   # 'use client' layout — provides RegistrationContext for /register and /register/consent
   /register/context.tsx                  # RegistrationContext + RegistrationProvider; holds form fields + File objects in memory across page navigation
-  /register/page.tsx                     # Student registration form (9 fields + 3 file uploads); on submit saves to context and navigates to /register/consent
+  /register/page.tsx                     # Student registration form (10 fields incl. city + 3 file uploads); on submit saves to context and navigates to /register/consent
   /register/consent/page.tsx             # Consent page: application summary + 4 required checkboxes; POSTs to /api/student/register on accept
-  /admin/page.tsx                        # Admin review portal (3 tabs: Student Applications, Manage Dropdowns, Manage Admins)
+  /admin/page.tsx                        # Admin review portal (3 tabs: Student Applications, Manage Dropdowns incl. cities, Manage Admins)
   /accept-invite/page.tsx                # Admin invite acceptance — set password to activate admin account
   /pending/page.tsx                      # Application status view (pending / rejected)
   /verify-email/page.tsx                 # Email verification landing
+  /forgot-password/page.tsx              # Request a password-reset link by email
+  /reset-password/page.tsx               # Set a new password from a reset-link token
   /api/
     /auth/signup/route.ts                # POST — create account, hash password, send verification email; purges all expired+unverified rows before duplicate check; 2-hour expiry window
     /auth/login/route.ts                 # POST — authenticate, set auth-token cookie
@@ -48,6 +50,8 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     /auth/me/route.ts                    # GET  — return current session user + registration status
     /auth/verify-email/route.ts          # GET  — validate token; deletes user row if expired, then redirects; sets session and redirects on success
     /auth/accept-invite/route.ts         # POST — validate invite token, create admin user (email_verified=true, role='admin'), set session cookie; deletes invite row on success
+    /auth/forgot-password/route.ts       # POST — issue uuid reset token (1-hour expiry) for verified users, email it (fire-and-forget); always returns 200 to prevent email enumeration
+    /auth/reset-password/route.ts        # POST — validate reset token + expiry, bcrypt-hash new password (min 8 chars), clear token
     /student/register/route.ts           # POST — FormData with files + consents_accepted flag; validates consent, inserts student_profiles row with consented_at = NOW()
     /admin/students/route.ts                          # GET    — list all student applications (admin only)
     /admin/students/[id]/review/route.ts              # POST   — approve/reject; deletes passport+admission letter from Blob; sends email
@@ -62,19 +66,23 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     /admin/options/airports/[id]/route.ts             # DELETE — remove airport (admin only)
     /admin/options/airlines/route.ts                  # POST   — create airline (admin only)
     /admin/options/airlines/[id]/route.ts             # DELETE — remove airline (admin only)
+    /admin/options/cities/route.ts                    # POST   — create city (admin only)
+    /admin/options/cities/[id]/route.ts               # DELETE — remove city (admin only)
     /files/[filename]/route.ts                        # Retired — returns 410; files now served directly from Vercel Blob URLs
     /options/universities/route.ts                    # GET    — list universities + nested courses (authenticated students)
     /options/airports/route.ts                        # GET    — list airports (authenticated students)
     /options/airlines/route.ts                        # GET    — list airlines (authenticated students)
-    /students/me/route.ts                # GET  — own approved profile + flight details
-    /students/peers/route.ts             # GET  — approved peers at same university (phone masked unless share_phone)
+    /options/cities/route.ts                          # GET    — list destination cities (authenticated students)
+    /students/me/route.ts                # GET  — own approved profile (incl. city, country_of_education) + flight details
+    /students/peers/route.ts             # GET  — all approved peers heading to my country_of_education (phone masked unless share_phone); client filters by university/city/course/degree/intake
     /students/flight/route.ts            # GET/POST — upsert own flight details
     /students/share-phone/route.ts       # PUT  — toggle share_phone boolean
   /components/
+    AppLogo.tsx                          # Shared logo component — renders public/unimatelogo.png via next/image (unoptimized); accepts height prop
     Navbar.tsx                           # Sticky nav with real user info + sign-out button
-    BoardingPass.tsx                     # Boarding-pass card — real profile + flight details; accepts FlightDetails props
-    FlyMateExplorer.tsx                  # Peer discovery + filtering UI — live DB data; accepts Peer[] prop
-    StudentCard.tsx                      # Individual peer card; exports Peer interface
+    BoardingPass.tsx                     # Boarding-pass card — real profile (incl. city) + flight details; accepts FlightDetails props
+    FlyMateExplorer.tsx                  # Peer discovery UI — live DB data; country-wide pool with composable University/City/Course/Degree/Intake dropdowns + active-filter chips + search/sort; accepts Peer[] prop
+    StudentCard.tsx                      # Individual peer card (shows university + city); exports Peer interface
     FlightDetailsModal.tsx               # Modal form: departure, arrival, date, airline; exports FlightDetails interface
     Services.tsx                         # Services hub (4 cards)
     Toast.tsx                            # useToast() hook, auto-dismiss 3.6s
@@ -83,7 +91,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 /lib/
   db.ts      # export const sql = neon(process.env.DATABASE_CONNECTION_STRING!)
   auth.ts    # signToken, verifyToken, getSession, makeSessionCookieOptions; SessionPayload interface
-  email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail, sendAdminInviteEmail
+  email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail, sendAdminInviteEmail, sendPasswordResetEmail
 /middleware.ts                           # JWT protection — public allowlist + /admin role guard
 /private_uploads/                        # Local dev placeholder only — production files live in Vercel Blob
 ```
@@ -92,15 +100,15 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 
 Full schema and migration history: [`db/schema.sql`](./db/schema.sql)
 
-Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false`, `consented_at TIMESTAMPTZ`), `flight_details`, `universities`, `courses`, `airports`, `airlines`, `admin_invites` (UUID PK, email, token, expires_at, invited_by → users)
+Tables: `users` (includes `password_reset_token VARCHAR(255)`, `password_reset_expires TIMESTAMPTZ` for the forgot-password flow), `student_profiles` (includes `share_phone BOOLEAN DEFAULT false`, `consented_at TIMESTAMPTZ`, `city VARCHAR(255)` — destination city, nullable for pre-feature rows), `flight_details`, `universities`, `courses`, `airports`, `airlines`, `cities` (id, label, created_at), `admin_invites` (UUID PK, email, token, expires_at, invited_by → users)
 
 ## Hard Rules — Never Break These
 
-1. **Peer directory queries** must never return: `phone`, `password_hash`, `passport_url`, `admission_letter_url`, `rejection_reason`, `reviewed_by`. Safe fields: `full_name`, `email`, `course_name`, `intake_month`, `intake_year`, `country_of_origin`, `degree_level`, `university_name`, `profile_picture_url`.
+1. **Peer directory queries** must never return: `phone`, `password_hash`, `passport_url`, `admission_letter_url`, `rejection_reason`, `reviewed_by`. Safe fields: `full_name`, `email`, `course_name`, `intake_month`, `intake_year`, `country_of_origin`, `degree_level`, `university_name`, `city`, `profile_picture_url`.
 
 2. **Sensitive documents** (`passport_url`, `admission_letter_url`) must be deleted from Vercel Blob via `del()` immediately after admin approve or reject. `profile_picture_url` is intentionally retained — it is displayed on the dashboard and in the peer directory. See `/api/admin/students/[id]/review/route.ts`.
 
-3. **All API routes** must call `getSession()` before any database operation. Public exceptions: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/verify-email`, `POST /api/auth/accept-invite`.
+3. **All API routes** must call `getSession()` before any database operation. Public exceptions: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/verify-email`, `POST /api/auth/accept-invite`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password` (the last two are token-gated, not session-gated).
 
 4. **Admin routes** (`/admin/*` and `/api/admin/*`) must check `session.role === 'admin'`. Student sessions must never access admin routes.
 
@@ -111,7 +119,7 @@ Tables: `users`, `student_profiles` (includes `share_phone BOOLEAN DEFAULT false
 ## Auth Middleware Logic
 
 ```
-Public (no auth):  /login, /verify-email, /accept-invite, /api/auth/*
+Public (no auth):  /login, /verify-email, /accept-invite, /forgot-password, /reset-password, /api/auth/*
 Admin only:        /admin/* → role must be 'admin', else redirect /
 Protected:         all other routes → valid auth-token cookie required, else redirect /login
 ```
@@ -144,20 +152,23 @@ BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add 
 ## Known Gaps (not MVP-blocking for auth/admin flows)
 
 - **No server-side field validation** in `/api/student/register` — fields are inserted as-is. Add presence/length checks before the SQL insert.
+- **`student_profiles.city` is nullable and backfill-only-on-reapply** — profiles approved before the city feature have `city = NULL` and won't surface in anyone's "My city" scope until re-registered. There is no profile-edit flow to set it retroactively.
 
 ## Phase 1 Scope — What Exists
 
 - Signup → email verification (2-hour expiry; expired rows auto-deleted) → login/logout (with sign-out button in Navbar)
+- Forgot/reset password: `/forgot-password` requests a reset link (uuid token, 1-hour expiry, stored on `users.password_reset_token/expires`); `/reset-password` validates the token and sets a new bcrypt-hashed password. Forgot-password always returns 200 to prevent email enumeration; only verified accounts receive a link
 - Student registration form with passport, admission letter, and profile photo upload (photo resized client-side to max 400 px before upload)
 - Admin review queue (approve / reject with reason + file deletion)
 - Email notifications: verification link, registration acknowledgement, approved, rejected
 - File uploads via Vercel Blob (public URLs); sensitive documents deleted from Blob after admin review
-- Live peer directory: real approved students at same university, profile photos, email + opt-in phone
+- Live peer directory: real approved students heading to the same destination country, profile photos, email + opt-in phone
+- Dashboard peer directory: the peers query (`/api/students/peers`) returns **every approved student heading to my `country_of_education`**; the default dashboard view shows them all. `FlyMateExplorer` then narrows client-side with five composable "pick any" dropdowns — **University, City, Course, Degree, Intake** (options derived from the country pool, default "All") — plus active-filter chips + "Clear all", search, sort, and a phone-share toggle. Selecting your own university/city gives "same university"/"same city"; University+City together give campus-level precision. Own city shown on the boarding pass; each peer card shows the peer's university + city
 - Boarding pass: real profile data + flight details (departure, arrival, date, airline)
 - Flight details form: students enter their flight info; "Same flight day" badge on peer cards
 - Phone sharing toggle on dashboard; phone masked in peer query unless `share_phone = true`
-- Admin-managed dropdown options: universities (with nested courses), airports, airlines — full CRUD via `/api/admin/options/*`
-- Student-facing dropdown APIs: `/api/options/universities`, `/api/options/airports`, `/api/options/airlines`
+- Admin-managed dropdown options: universities (with nested courses), airports, airlines, cities — full CRUD via `/api/admin/options/*`
+- Student-facing dropdown APIs: `/api/options/universities`, `/api/options/airports`, `/api/options/airlines`, `/api/options/cities`
 - Consent flow: after filling the registration form students are taken to `/register/consent` where they must accept 4 required consent declarations (document storage, profile picture, email sharing, phone collection) before submission; `consented_at` timestamp recorded in DB
 - Admin invite-by-email: admins can invite new admins via the "Manage Admins" tab; invite link (48-hour expiry) sent by email; recipient sets password at `/accept-invite`; admin accounts skip email verification; admins can also revoke pending invites and demote existing admins
 - Deployed to Vercel; email links use `APP_URL` env var

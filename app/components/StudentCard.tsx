@@ -11,6 +11,7 @@ export interface Peer {
   intake_year: number;
   country_of_origin: string;
   university_name: string;
+  city: string | null;
   profile_picture_url: string | null;
   departure_from: string | null;
   arrival: string | null;
@@ -115,6 +116,14 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
             </svg>
             {s.university_name}
           </div>
+          {s.city && (
+            <div style={{ fontSize: ".78rem", color: "var(--ink-faint)", fontWeight: 600, marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+              </svg>
+              {s.city}
+            </div>
+          )}
         </div>
 
         {(sameRoute || sameDate) && (

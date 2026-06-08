@@ -25,13 +25,14 @@ interface BoardingPassProps {
   degreeLevel: string;
   intakeMonth: string;
   intakeYear: number;
+  city?: string | null;
   flightDetails: FlightDetails | null;
   onAddFlight: () => void;
 }
 
 export default function BoardingPass({
   name, university, course, degreeLevel,
-  intakeMonth, intakeYear, flightDetails, onAddFlight,
+  intakeMonth, intakeYear, city, flightDetails, onAddFlight,
 }: BoardingPassProps) {
   return (
     <div className="boarding-pass-layout" style={{
@@ -76,6 +77,7 @@ export default function BoardingPass({
             { label: "University", value: university },
             { label: "Programme", value: `${degreeLevel} — ${course}` },
             { label: "Intake", value: `${intakeMonth} ${intakeYear}` },
+            ...(city ? [{ label: "City", value: city }] : []),
           ].map(({ label, value }) => (
             <div key={label}>
               <b style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: ".66rem", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink-faint)", fontWeight: 700 }}>{label}</b>
