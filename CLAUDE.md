@@ -81,10 +81,10 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     AppLogo.tsx                          # Shared logo component — renders public/unimatelogo.png via next/image (unoptimized); accepts height prop
     Navbar.tsx                           # Sticky nav with real user info + sign-out button
     BoardingPass.tsx                     # Boarding-pass card — real profile (incl. city) + flight details; accepts FlightDetails props
-    FlyMateExplorer.tsx                  # Peer discovery UI — live DB data; country-wide pool with composable University/City/Course/Degree/Intake dropdowns + active-filter chips + search/sort; accepts Peer[] prop
-    StudentCard.tsx                      # Individual peer card (shows university + city); exports Peer interface
+    FlyMateExplorer.tsx                  # Peer discovery UI — 2-col layout (filters horizontal row + right services sidebar); live DB data; University/City/Course/Degree/Intake dropdowns + active-filter chips + search/sort; services data inlined (4 cards, icon+title+tag+CTA only); mobile filter drawer; peer grid uses minmax(170px,1fr); accepts Peer[] prop
+    StudentCard.tsx                      # Compact portrait tile (88px avatar, name, university, city — click to open detail modal); exports Peer interface; includes Avatar sub-component; Apple-style sheet modal with backdrop blur, Escape key close, bottom-sheet on mobile with safe-area inset
     FlightDetailsModal.tsx               # Modal form: departure, arrival, date, airline; exports FlightDetails interface
-    Services.tsx                         # Services hub (4 cards)
+    Services.tsx                         # Services hub (4 cards) — NOT rendered from page.tsx; service card data is inlined in FlyMateExplorer for the right sidebar
     Toast.tsx                            # useToast() hook, auto-dismiss 3.6s
   /data/
     students.ts                          # Static demo data (unused; kept for reference)
@@ -163,7 +163,8 @@ BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add 
 - Email notifications: verification link, registration acknowledgement, approved, rejected
 - File uploads via Vercel Blob (public URLs); sensitive documents deleted from Blob after admin review
 - Live peer directory: real approved students heading to the same destination country, profile photos, email + opt-in phone
-- Dashboard peer directory: the peers query (`/api/students/peers`) returns **every approved student heading to my `country_of_education`**; the default dashboard view shows them all. `FlyMateExplorer` then narrows client-side with five composable "pick any" dropdowns — **University, City, Course, Degree, Intake** (options derived from the country pool, default "All") — plus active-filter chips + "Clear all", search, sort, and a phone-share toggle. Selecting your own university/city gives "same university"/"same city"; University+City together give campus-level precision. Own city shown on the boarding pass; each peer card shows the peer's university + city
+- Dashboard peer directory: the peers query (`/api/students/peers`) returns **every approved student heading to my `country_of_education`**; the default dashboard view shows them all. `FlyMateExplorer` then narrows client-side with five composable "pick any" dropdowns — **University, City, Course, Degree, Intake** (options derived from the country pool, default "All") — plus active-filter chips + "Clear all", search, sort, and a phone-share toggle. 2-col layout: filters+peer grid on left, compact service sidebar on right (collapses to 1-col on narrow viewports). Mobile: filters hidden behind a "Filters" toggle button that opens a fixed drawer overlay. Selecting your own university/city gives "same university"/"same city"; University+City together give campus-level precision. Own city shown on the boarding pass; each peer card shows the peer's university + city
+- Peer cards are compact portrait tiles (88px avatar, name, university, city only). Clicking a tile opens an Apple-style detail sheet modal with full info (programme, intake, flight line, degree/country tags) and Email + Phone (copy) action buttons. Modal is a bottom sheet on mobile ≤480px (slide-up animation, drag handle, safe-area inset); centred dialog on desktop. Closes on backdrop click, × button, or Escape key
 - Boarding pass: real profile data + flight details (departure, arrival, date, airline)
 - Flight details form: students enter their flight info; "Same flight day" badge on peer cards
 - Phone sharing toggle on dashboard; phone masked in peer query unless `share_phone = true`
