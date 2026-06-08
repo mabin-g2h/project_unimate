@@ -29,11 +29,6 @@ interface MyProfile {
   airline: string | null;
 }
 
-function fmtDate(iso: string) {
-  const d = new Date(iso + "T12:00:00");
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 export default function Home() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -69,15 +64,6 @@ export default function Home() {
       });
   }, [router, loadData]);
 
-  const handleFlightSaved = (details: FlightDetails) => {
-    setMyProfile(p => p ? { ...p, ...details } : p);
-    setShowFlightModal(false);
-    // Reload peers so "same flight day" badges refresh
-    fetch("/api/students/peers").then(r => r.json()).then(d => {
-      if (d.peers) setPeers(d.peers);
-    });
-  };
-
   const toggleSharePhone = async () => {
     if (togglingPhone) return;
     const next = !sharePhone;
@@ -98,6 +84,17 @@ export default function Home() {
     }
   };
 
+  const handleFlightSaved = (details: FlightDetails) => {
+    setMyProfile(p => p ? { ...p, ...details } : p);
+    setShowFlightModal(false);
+    // Reload peers so "same flight day" badges refresh
+    fetch("/api/students/peers").then(r => r.json()).then(d => {
+      if (d.peers) setPeers(d.peers);
+    });
+  };
+
+
+
   if (!ready) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 36, height: 36, border: "3px solid var(--line)", borderTopColor: "var(--teal)", borderRadius: "50%", animation: "spin .8s linear infinite" }}>
@@ -117,14 +114,34 @@ export default function Home() {
       : null;
 
   const firstName = myProfile?.full_name?.split(" ")[0] ?? "there";
-  const peersCount = peers.length;
-  const sharingPhoneCount = peers.filter(p => p.phone !== null).length;
-  // Count peers on same route (departure + arrival + date), or date-only if no route set
-  const flyingSameDayCount = myProfile?.travel_date
+
+  const atUniversityCount = peers.filter(p =>
+    p.university_name === myProfile?.university_name
+  ).length;
+
+  const doingCourseCount = peers.filter(p =>
+    p.university_name === myProfile?.university_name &&
+    p.course_name === myProfile?.course_name &&
+    p.degree_level === myProfile?.degree_level
+  ).length;
+
+  const sameDegreeCount = peers.filter(p =>
+    p.degree_level === myProfile?.degree_level &&
+    p.intake_month === myProfile?.intake_month &&
+    p.intake_year === myProfile?.intake_year
+  ).length;
+
+  const inIntakeCount = peers.filter(p =>
+    p.university_name === myProfile?.university_name &&
+    p.intake_month === myProfile?.intake_month &&
+    p.intake_year === myProfile?.intake_year
+  ).length;
+
+  const sameFlightCount = myProfile?.travel_date
     ? peers.filter(p => {
         if (p.travel_date !== myProfile.travel_date) return false;
-        if (myProfile.departure_from && myProfile.arrival)
-          return p.departure_from === myProfile.departure_from && p.arrival === myProfile.arrival;
+        if (p.university_name !== myProfile.university_name) return false;
+        if (myProfile.arrival) return p.arrival === myProfile.arrival;
         return true;
       }).length
     : null;
@@ -166,26 +183,34 @@ export default function Home() {
               city={myProfile.city}
               flightDetails={myFlight}
               onAddFlight={() => setShowFlightModal(true)}
+              sharePhone={sharePhone}
+              onTogglePhone={toggleSharePhone}
             />
           )}
 
           {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginTop: 16 }} className="stats-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 14, marginTop: 16 }} className="stats-grid">
             <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--teal)" }}>{peersCount}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--teal)" }}>{atUniversityCount}</div>
               <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>At your university</div>
             </div>
             <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1 }}>{sharingPhoneCount}</div>
-              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Share their phone</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--teal)" }}>{doingCourseCount}</div>
+              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Doing your course</div>
             </div>
             <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              {flyingSameDayCount !== null ? (
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1 }}>{sameDegreeCount}</div>
+              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Doing same degree</div>
+            </div>
+            <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1 }}>{inIntakeCount}</div>
+              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>In your intake</div>
+            </div>
+            <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
+              {sameFlightCount !== null ? (
                 <>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--coral-deep)" }}>{flyingSameDayCount}</div>
-                  <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>
-                    {myProfile?.departure_from && myProfile?.arrival ? "Same flight" : `Flying ${fmtDate(myProfile!.travel_date!)}`}
-                  </div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--coral-deep)" }}>{sameFlightCount}</div>
+                  <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Same flight</div>
                 </>
               ) : (
                 <>
@@ -199,25 +224,8 @@ export default function Home() {
                 </>
               )}
             </div>
-            {/* Share phone toggle card */}
-            <div
-              onClick={toggleSharePhone}
-              style={{
-                background: sharePhone ? "var(--teal-tint)" : "var(--cream-2)",
-                border: `1px solid ${sharePhone ? "var(--teal)" : "var(--line-soft)"}`,
-                borderRadius: "var(--radius-sm)", padding: "16px 18px",
-                cursor: togglingPhone ? "wait" : "pointer", transition: ".2s",
-                userSelect: "none",
-              }}
-            >
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: sharePhone ? "var(--teal-deep)" : "var(--ink-faint)" }}>
-                {sharePhone ? "ON" : "OFF"}
-              </div>
-              <div style={{ fontSize: ".78rem", color: sharePhone ? "var(--teal-deep)" : "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>
-                Share my phone
-              </div>
-            </div>
           </div>
+
         </div>
       </header>
 
