@@ -42,7 +42,7 @@ const services = [
         <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L11 19v-5.5z" />
       </svg>
     ),
-    bg: "#E7E2F3", color: "#5A4AA8"
+    bg: "var(--teal-tint)", color: "var(--teal)"
   },
   {
     key: "Document Wallet",
@@ -57,7 +57,7 @@ const services = [
         <path d="M16 12h.01" /><path d="M3 9h18" />
       </svg>
     ),
-    bg: "#F6EAD0", color: "#9A6B12"
+    bg: "var(--teal-tint)", color: "var(--teal)"
   },
 ];
 

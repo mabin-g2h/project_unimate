@@ -160,7 +160,7 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
               fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "1rem",
               cursor: saving || !valid ? "not-allowed" : "pointer",
               opacity: !valid ? .5 : 1, transition: ".18s",
-              boxShadow: valid ? "0 8px 18px -6px rgba(14,110,98,.55)" : "none",
+              boxShadow: valid ? "0 8px 18px -6px rgba(9,66,189,0.35)" : "none",
             }}
           >
             {saving ? "Saving…" : "Save flight details"}

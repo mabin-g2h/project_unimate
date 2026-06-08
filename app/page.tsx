@@ -136,8 +136,8 @@ export default function Home() {
 
       <header style={{ padding: "34px 0 8px" }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
-          <div style={{ fontSize: ".74rem", fontWeight: 700, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--coral-deep)", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 26, height: 2, background: "var(--coral)", display: "inline-block" }} />
+          <div style={{ fontSize: ".74rem", fontWeight: 700, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--teal)", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 26, height: 2, background: "var(--teal)", display: "inline-block" }} />
             Verification complete · profile active
           </div>
           <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(1.9rem,5vw,2.9rem)", letterSpacing: "-.03em", lineHeight: 1.02, marginBottom: 6 }}>
@@ -145,7 +145,7 @@ export default function Home() {
             Find your{" "}
             <em style={{ fontStyle: "normal", color: "var(--teal)", position: "relative", whiteSpace: "nowrap" }}>
               FlyMate
-              <span style={{ content: '""', position: "absolute", left: 0, right: 0, bottom: 2, height: 8, background: "var(--coral-tint)", zIndex: -1, borderRadius: 4, display: "block" }} />
+              <span style={{ content: '""', position: "absolute", left: 0, right: 0, bottom: 2, height: 8, background: "var(--teal-tint)", zIndex: -1, borderRadius: 4, display: "block" }} />
             </em>
             {myProfile?.university_name ? ` to ${myProfile.university_name}.` : "."}
           </h1>
@@ -246,7 +246,7 @@ export default function Home() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @media (max-width: 680px) { .stats-grid { grid-template-columns: repeat(2,1fr) !important; } }
-        @media (max-width: 460px) { .stats-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 360px) { .stats-grid { grid-template-columns: 1fr !important; } }
         @media (max-width: 860px) { .svc-grid { grid-template-columns: repeat(2,1fr) !important; } }
         @media (max-width: 460px) { .svc-grid { grid-template-columns: 1fr !important; } }
         .svc-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--teal) !important; }

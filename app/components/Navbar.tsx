@@ -21,16 +21,16 @@ export default function Navbar({ name, university }: NavbarProps) {
   return (
     <nav style={{
       position: "sticky", top: 0, zIndex: 40,
-      backdropFilter: "blur(10px)",
-      background: "rgba(244,239,227,.82)",
-      borderBottom: "1px solid var(--line)",
+      backdropFilter: "blur(20px)",
+      background: "rgba(255,255,255,0.72)",
+      borderBottom: "1px solid rgba(0,0,0,0.1)",
     }}>
       <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 60, maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
           <div style={{
             width: 38, height: 38, borderRadius: 11, background: "var(--teal)",
             display: "grid", placeItems: "center",
-            boxShadow: "0 6px 14px -4px rgba(14,110,98,.5)",
+            boxShadow: "0 6px 14px -4px rgba(9,66,189,0.3)",
             transform: "rotate(-6deg)",
           }}>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -38,7 +38,7 @@ export default function Navbar({ name, university }: NavbarProps) {
             </svg>
           </div>
           <div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.18rem", letterSpacing: "-.02em", lineHeight: 1 }}>Uni&nbsp;Mate</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.18rem", letterSpacing: "-.02em", lineHeight: 1 }}>uniMate</div>
             <div style={{ fontSize: ".66rem", fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--teal)" }}>FlyMate Network</div>
           </div>
         </div>
@@ -73,11 +73,11 @@ export default function Navbar({ name, university }: NavbarProps) {
             title="Sign out"
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              border: "1px solid var(--line)", background: "var(--cream-2)",
-              borderRadius: 10, padding: "10px 14px", cursor: "pointer",
-              fontFamily: "var(--font-body)", fontWeight: 600, fontSize: ".8rem",
-              color: "var(--ink-soft)", transition: ".18s",
-              minHeight: 44, minWidth: 44,
+              border: "none", background: "var(--near-black)",
+              borderRadius: 200, padding: "10px 16px", cursor: "pointer",
+              fontFamily: "var(--font-body)", fontWeight: 500, fontSize: ".82rem",
+              color: "#fff", transition: ".18s",
+              minHeight: 36,
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
