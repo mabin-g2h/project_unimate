@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "./components/Navbar";
 import BoardingPass from "./components/BoardingPass";
-import Services from "./components/Services";
 import FlyMateExplorer from "./components/FlyMateExplorer";
 import FlightDetailsModal, { FlightDetails } from "./components/FlightDetailsModal";
 import Toast, { useToast } from "./components/Toast";
@@ -168,9 +167,6 @@ export default function Home() {
             </em>
             {myProfile?.university_name ? ` to ${myProfile.university_name}.` : "."}
           </h1>
-          <p style={{ color: "var(--ink-soft)", fontSize: "1.02rem", maxWidth: "54ch", marginTop: 4 }}>
-            Your profile is verified and active. Below are verified students heading to your university — connect by email, and reach out by phone where students have chosen to share it.
-          </p>
 
           {myProfile && (
             <BoardingPass
@@ -229,7 +225,6 @@ export default function Home() {
         </div>
       </header>
 
-      <Services onToast={showToast} />
       <FlyMateExplorer
         peers={peers}
         myTravelDate={myProfile?.travel_date ?? null}
@@ -256,14 +251,24 @@ export default function Home() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes rise { to { opacity: 1; transform: translateY(0) } }
         @media (max-width: 680px) { .stats-grid { grid-template-columns: repeat(2,1fr) !important; } }
         @media (max-width: 360px) { .stats-grid { grid-template-columns: 1fr !important; } }
-        @media (max-width: 860px) { .svc-grid { grid-template-columns: repeat(2,1fr) !important; } }
-        @media (max-width: 460px) { .svc-grid { grid-template-columns: 1fr !important; } }
-        .svc-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--teal) !important; }
-        .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--teal-tint) !important; }
+        .svc-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--teal) !important; }
+        .card:hover { transform: translateY(-2px) !important; box-shadow: 0 8px 28px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.07) !important; }
         .hide-mobile { display: flex; flex-direction: column; }
         @media (max-width: 640px) { .hide-mobile { display: none; } }
+        /* Explorer 2-col responsive */
+        .filters-toggle-bar { display: none; }
+        .filter-row-desktop { display: block; }
+        @media (max-width: 860px) {
+          .explorer-grid { grid-template-columns: 1fr !important; }
+          .service-sidebar { display: none !important; }
+        }
+        @media (max-width: 640px) {
+          .filter-row-desktop { display: none !important; }
+          .filters-toggle-bar { display: flex !important; }
+        }
       `}</style>
     </>
   );
