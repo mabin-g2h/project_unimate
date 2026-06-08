@@ -39,7 +39,7 @@ export default function BoardingPass({
       boxShadow: "var(--shadow)", border: "1px solid var(--line-soft)", overflow: "hidden",
       position: "relative",
     }}>
-      <div style={{ content: '""', position: "absolute", inset: 0, background: "radial-gradient(600px 200px at 100% 0,rgba(14,110,98,.06),transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ content: '""', position: "absolute", inset: 0, background: "radial-gradient(600px 200px at 100% 0,rgba(9,66,189,0.06),transparent 70%)", pointerEvents: "none" }} />
 
       {/* Main */}
       <div style={{ flex: 1, padding: "26px 28px", minWidth: 0 }}>
@@ -48,7 +48,7 @@ export default function BoardingPass({
             width: 74, height: 74, borderRadius: 20, flexShrink: 0, display: "grid", placeItems: "center",
             fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.7rem", color: "#fff",
             background: "linear-gradient(140deg,var(--teal),var(--teal-deep))",
-            boxShadow: "0 12px 22px -8px rgba(14,110,98,.5)", position: "relative",
+            boxShadow: "0 12px 22px -8px rgba(9,66,189,0.4)", position: "relative",
           }}>
             {initials(name)}
             <div style={{
@@ -92,7 +92,7 @@ export default function BoardingPass({
         color: "#fff", padding: "24px 22px", position: "relative",
         display: "flex", flexDirection: "column", justifyContent: "space-between",
       }}>
-        <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, borderLeft: "2px dashed rgba(255,255,255,.4)" }} />
+        <span className="boarding-pass-stub-line" style={{ position: "absolute", left: 0, top: 0, bottom: 0, borderLeft: "2px dashed rgba(255,255,255,.4)" }} />
 
         {flightDetails ? (
           <>

@@ -18,7 +18,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 ## Tech Stack
 
 - **Framework**: Next.js 16.2.7, React 19.2.4, TypeScript 5.9.3 strict mode
-- **Styling**: Tailwind CSS 4, inline CSS variables (`--teal #0E6E62`, `--coral #EE5B36`, `--ink`, etc.)
+- **Styling**: Tailwind CSS 4, inline CSS variables (`--teal #0942BD`, `--coral #EE5B36`, `--ink #1D1D1F`, `--cream #F5F5F7`, etc.) — Apple-inspired palette; SF Pro system font stack
 - **Database**: Neon serverless PostgreSQL (`@neondatabase/serverless`) — raw SQL via tagged `sql` template literal
 - **Auth**: Custom JWT — `jose` library, HS256, 7-day expiry, stored as `auth-token` HttpOnly cookie
 - **Passwords**: `bcryptjs` (rounds: 12)
@@ -31,7 +31,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 ```
 /app
   page.tsx                               # Home dashboard (approved students) — live data from DB
-  layout.tsx                             # Root layout; fonts: Bricolage Grotesque, Hanken Grotesk, Space Mono
+  layout.tsx                             # Root layout; system font stack (SF Pro Display/Text/Mono) via CSS variables — no Google Fonts
   /login/page.tsx                        # Combined login + signup toggle
   /register/layout.tsx                   # 'use client' layout — provides RegistrationContext for /register and /register/consent
   /register/context.tsx                  # RegistrationContext + RegistrationProvider; holds form fields + File objects in memory across page navigation

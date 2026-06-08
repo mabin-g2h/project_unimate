@@ -1,30 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --cream: #F4EFE3;
-  --cream-2: #FBF8F0;
+  --cream: #F5F5F7;
+  --cream-2: #FFFFFF;
   --paper: #FFFFFF;
-  --ink: #16211C;
-  --ink-soft: #56615A;
-  --ink-faint: #8A9189;
-  --teal: #0E6E62;
-  --teal-deep: #0A4A42;
-  --teal-tint: #DBEBE6;
+  --ink: #1D1D1F;
+  --ink-soft: #6E6E73;
+  --ink-faint: #8E8E93;
+  --teal: #0942BD;
+  --teal-deep: #0635A0;
+  --teal-tint: rgba(9,66,189,0.08);
   --coral: #EE5B36;
   --coral-deep: #C9421F;
   --coral-tint: #FBE2D8;
   --gold: #DC9B2E;
   --green: #2E9D5C;
-  --line: #E3DAC8;
-  --line-soft: #EDE6D7;
-  --lock: #A89C86;
-  --radius: 18px;
+  --line: rgba(0,0,0,0.12);
+  --line-soft: rgba(0,0,0,0.06);
+  --lock: #8E8E93;
+  --cta-blue: #027AFF;
+  --near-black: #161514;
+  --link: #0066CC;
+  --radius: 16px;
   --radius-sm: 12px;
-  --shadow: 0 1px 2px rgba(20,33,28,.04), 0 12px 30px -12px rgba(20,33,28,.16);
-  --shadow-lg: 0 30px 60px -24px rgba(20,33,28,.30);
-  --font-display: 'Bricolage Grotesque', sans-serif;
-  --font-body: 'Hanken Grotesk', sans-serif;
-  --font-mono: 'Space Mono', monospace;
+  --shadow: 0 2px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 2px 4px 0 rgba(0,0,0,0.08), 0 8px 24px 0 rgba(0,0,0,0.08);
+  --font-display: "SF Pro Display", -apple-system, "system-ui", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body: "SF Pro Text", -apple-system, "system-ui", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,15 +38,11 @@ body {
   color: var(--ink);
   line-height: 1.5;
   background: var(--cream);
-  background-image:
-    radial-gradient(900px 500px at 105% -10%, rgba(14,110,98,.10), transparent 60%),
-    radial-gradient(700px 500px at -10% 110%, rgba(238,91,54,.08), transparent 55%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='1' cy='1' r='1' fill='%2316211c' fill-opacity='0.035'/%3E%3C/svg%3E");
   -webkit-font-smoothing: antialiased;
   padding-bottom: 60px;
 }
 
-::selection { background: var(--coral); color: #fff; }
+::selection { background: var(--teal); color: #fff; }
 
 @keyframes rise {
   to { opacity: 1; transform: none; }
@@ -66,10 +65,23 @@ body {
 @media (max-width: 800px) {
   .admin-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
-@media (max-width: 460px) {
+@media (max-width: 360px) {
   .admin-stats-grid { grid-template-columns: 1fr !important; }
-  /* Student dashboard stats also collapse to 1 col on very small phones */
+}
+
+/* Student dashboard stats: stay 2-col on most phones, 1-col only on very small */
+@media (max-width: 360px) {
   .stats-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Search bar: own full row on narrow screens so filter buttons wrap below */
+@media (max-width: 560px) {
+  .search-full-mobile { flex-basis: 100% !important; min-width: 0 !important; }
+}
+
+/* Boarding pass stub: remove left ticket-tear line when stacked */
+@media (max-width: 600px) {
+  .boarding-pass-stub-line { display: none; }
 }
 
 /* Admin table: allow horizontal scroll on narrow screens */
