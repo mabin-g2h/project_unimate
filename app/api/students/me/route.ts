@@ -9,6 +9,7 @@ export async function GET() {
   const rows = await sql`
     SELECT sp.full_name, sp.university_name, sp.degree_level, sp.course_name,
            sp.intake_month, sp.intake_year, sp.country_of_origin,
+           sp.country_of_education, sp.city,
            sp.profile_picture_url, sp.phone, sp.share_phone,
            fd.departure_from, fd.arrival, fd.travel_date::text, fd.airline
     FROM student_profiles sp

@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     INSERT INTO student_profiles (
       user_id, full_name, phone, country_of_origin, country_of_education,
       university_name, degree_level, course_name, intake_month, intake_year,
-      passport_url, admission_letter_url, profile_picture_url, consented_at
+      city, passport_url, admission_letter_url, profile_picture_url, consented_at
     ) VALUES (
       ${session.userId},
       ${fullName},
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       ${formData.get('course_name') as string},
       ${formData.get('intake_month') as string},
       ${parseInt(formData.get('intake_year') as string, 10)},
+      ${formData.get('city') as string},
       ${passportFile},
       ${admissionFile},
       ${profileFile},

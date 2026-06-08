@@ -12,6 +12,7 @@ interface RegistrationForm {
   course_name: string;
   intake_month: string;
   intake_year: string;
+  city: string;
 }
 
 export interface RegistrationData {
