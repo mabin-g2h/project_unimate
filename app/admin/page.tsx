@@ -3,6 +3,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLogo from '@/app/components/AppLogo';
+import Toast, { useToast } from '@/app/components/Toast';
+
+const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
+const YEARS = [2024, 2025, 2026, 2027];
+const inp: React.CSSProperties = {
+  width: '100%', fontFamily: 'var(--font-body)', fontSize: '.9rem', color: 'var(--ink)',
+  background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 10,
+  padding: '11px 14px', outline: 'none', boxSizing: 'border-box', appearance: 'none',
+};
 
 interface Student {
   user_id: number; email: string; created_at: string;
@@ -12,6 +23,15 @@ interface Student {
   course_name: string | null; intake_month: string | null; intake_year: number | null;
   passport_url: string | null; admission_letter_url: string | null; profile_picture_url: string | null;
   status: string | null; submitted_at: string | null; rejection_reason: string | null;
+  city: string | null;
+}
+
+interface EditFormState {
+  full_name: string; phone: string;
+  country_of_origin: string; country_of_education: string;
+  university_name: string; degree_level: string;
+  course_name: string; intake_month: string; intake_year: string;
+  city: string;
 }
 
 interface Course { id: number; name: string; }
@@ -41,6 +61,16 @@ export default function AdminPage() {
   const [actionError, setActionError] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [search, setSearch] = useState('');
+
+  // ── Edit form state (review modal) ────────────────────────────────────────
+  const { toasts, showToast } = useToast();
+  const [editForm, setEditForm] = useState<EditFormState | null>(null);
+  const [editUniversities, setEditUniversities] = useState<University[]>([]);
+  const [editCities, setEditCities] = useState<City[]>([]);
+  const [editCourses, setEditCourses] = useState<Course[]>([]);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
 
   // ── Dropdowns tab state ───────────────────────────────────────────────────
   const [universities, setUniversities] = useState<University[]>([]);
@@ -76,6 +106,16 @@ export default function AdminPage() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/options/universities').then(r => r.json()),
+      fetch('/api/options/cities').then(r => r.json()),
+    ]).then(([ur, cr]) => {
+      setEditUniversities(ur.universities ?? []);
+      setEditCities(cr.cities ?? []);
+    });
+  }, []);
 
   const loadDropdowns = useCallback(async () => {
     setDropdownsLoading(true);
@@ -118,6 +158,50 @@ export default function AdminPage() {
   }, []);
 
   // ── Student review actions ────────────────────────────────────────────────
+  function openModal(s: Student) {
+    setSelected(s);
+    setRejectionReason(''); setActionError(''); setSaveError(''); setIsDirty(false);
+    setEditForm({
+      full_name: s.full_name ?? '', phone: s.phone ?? '',
+      country_of_origin: s.country_of_origin ?? '', country_of_education: s.country_of_education ?? '',
+      university_name: s.university_name ?? '', degree_level: s.degree_level ?? '',
+      course_name: s.course_name ?? '', intake_month: s.intake_month ?? '',
+      intake_year: s.intake_year != null ? String(s.intake_year) : '',
+      city: s.city ?? '',
+    });
+    const uni = editUniversities.find(u => u.name === (s.university_name ?? ''));
+    setEditCourses(uni?.courses ?? []);
+  }
+
+  function closeModal() {
+    setSelected(null); setEditForm(null);
+    setRejectionReason(''); setActionError(''); setSaveError(''); setIsDirty(false);
+  }
+
+  function handleEditUniversityChange(name: string) {
+    const uni = editUniversities.find(u => u.name === name);
+    setEditCourses(uni?.courses ?? []);
+    setEditForm(f => f ? { ...f, university_name: name, course_name: '' } : f);
+    setIsDirty(true);
+  }
+
+  async function handleSave() {
+    if (!selected?.profile_id || !editForm) return;
+    setSaveLoading(true); setSaveError('');
+    const res = await fetch(`/api/admin/students/${selected.profile_id}/profile`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    const data = await res.json();
+    setSaveLoading(false);
+    if (!res.ok) { setSaveError(data.error ?? 'Failed to save changes.'); return; }
+    setStudents(prev => prev.map(s => s.profile_id === selected.profile_id ? { ...s, ...data.profile } : s));
+    setSelected(prev => prev ? { ...prev, ...data.profile } : prev);
+    setIsDirty(false);
+    showToast('Changes saved', `Profile updated for ${editForm.full_name || 'student'}.`);
+  }
+
   async function handleReview(action: 'approve' | 'reject') {
     if (!selected?.profile_id) return;
     if (action === 'reject' && !rejectionReason.trim()) {
@@ -132,7 +216,7 @@ export default function AdminPage() {
     const data = await res.json();
     setActionLoading(false);
     if (!res.ok) { setActionError(data.error ?? 'Failed'); return; }
-    setSelected(null); setRejectionReason('');
+    setSelected(null); setEditForm(null); setRejectionReason(''); setIsDirty(false);
     load();
   }
 
@@ -286,7 +370,7 @@ export default function AdminPage() {
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem' }}>
                 {selected.full_name ?? 'No profile submitted'}
               </div>
-              <button onClick={() => { setSelected(null); setRejectionReason(''); setActionError(''); }}
+              <button onClick={closeModal}
                 style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--ink-soft)', lineHeight: 1 }}>×</button>
             </div>
 
@@ -300,22 +384,127 @@ export default function AdminPage() {
 
               {selected.profile_id ? (
                 <>
-                  <Grid>
-                    <Detail label="Email" value={selected.email} />
-                    <Detail label="Phone" value={selected.phone ?? '—'} />
-                    <Detail label="Country of origin" value={selected.country_of_origin ?? '—'} />
-                    <Detail label="Country of education" value={selected.country_of_education ?? '—'} />
-                    <Detail label="University" value={selected.university_name ?? '—'} />
-                    <Detail label="Degree" value={selected.degree_level ?? '—'} />
-                    <Detail label="Course" value={selected.course_name ?? '—'} />
-                    <Detail label="Intake" value={selected.intake_month && selected.intake_year ? `${selected.intake_month} ${selected.intake_year}` : '—'} />
-                    <Detail label="Submitted" value={selected.submitted_at ? new Date(selected.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'} />
-                    <Detail label="Status" value={
-                      <span style={{ ...badge, ...(STATUS_COLORS[selected.status ?? ''] ?? {}) }}>
-                        {selected.status ?? 'no profile'}
-                      </span>
-                    } />
-                  </Grid>
+                  {editForm && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 4 }}>
+                      <Detail label="Email" value={selected.email} />
+
+                      <div className="two-col-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+                        <ModalEditField label="Full name">
+                          <input style={inp} value={editForm.full_name}
+                            onChange={e => { setEditForm(f => f ? { ...f, full_name: e.target.value } : f); setIsDirty(true); }} />
+                        </ModalEditField>
+
+                        <ModalEditField label="Phone">
+                          <input style={inp} value={editForm.phone}
+                            onChange={e => { setEditForm(f => f ? { ...f, phone: e.target.value } : f); setIsDirty(true); }} />
+                        </ModalEditField>
+
+                        <ModalEditField label="Country of origin">
+                          <select style={inp} value={editForm.country_of_origin}
+                            onChange={e => { setEditForm(f => f ? { ...f, country_of_origin: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Select country</option>
+                            {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="Country of education">
+                          <select style={inp} value={editForm.country_of_education}
+                            onChange={e => { setEditForm(f => f ? { ...f, country_of_education: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Select country</option>
+                            {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="University">
+                          <select style={inp} value={editForm.university_name}
+                            onChange={e => handleEditUniversityChange(e.target.value)}>
+                            <option value="">Select university</option>
+                            {editForm.university_name && !editUniversities.find(u => u.name === editForm.university_name) && (
+                              <option value={editForm.university_name} disabled>
+                                {editForm.university_name} (not in list)
+                              </option>
+                            )}
+                            {editUniversities.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="Degree level">
+                          <select style={inp} value={editForm.degree_level}
+                            onChange={e => { setEditForm(f => f ? { ...f, degree_level: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Select level</option>
+                            {DEGREES.map(d => <option key={d}>{d}</option>)}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="Course">
+                          <select style={{ ...inp, opacity: !editForm.university_name ? 0.5 : 1 }}
+                            value={editForm.course_name}
+                            disabled={!editForm.university_name}
+                            onChange={e => { setEditForm(f => f ? { ...f, course_name: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Select course</option>
+                            {editCourses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            {editForm.university_name && <option value="Not sure">Not sure</option>}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="City">
+                          <select style={inp} value={editForm.city}
+                            onChange={e => { setEditForm(f => f ? { ...f, city: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Select city</option>
+                            {editCities.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="Intake month">
+                          <select style={inp} value={editForm.intake_month}
+                            onChange={e => { setEditForm(f => f ? { ...f, intake_month: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Month</option>
+                            {MONTHS.map(m => <option key={m}>{m}</option>)}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="Intake year">
+                          <select style={inp} value={editForm.intake_year}
+                            onChange={e => { setEditForm(f => f ? { ...f, intake_year: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Year</option>
+                            {YEARS.map(y => <option key={y} value={String(y)}>{y}</option>)}
+                          </select>
+                        </ModalEditField>
+                      </div>
+
+                      <Detail label="Status" value={
+                        <span style={{ ...badge, ...(STATUS_COLORS[selected.status ?? ''] ?? {}) }}>
+                          {selected.status ?? 'no profile'}
+                        </span>
+                      } />
+                      <Detail label="Submitted" value={selected.submitted_at
+                        ? new Date(selected.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : '—'} />
+
+                      {saveError && (
+                        <div style={{ background: 'var(--coral-tint)', borderRadius: 8, padding: '8px 12px', color: 'var(--coral-deep)', fontSize: '.84rem' }}>
+                          {saveError}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <button onClick={handleSave} disabled={saveLoading || !isDirty}
+                          style={{
+                            padding: '10px 22px', borderRadius: 10, border: 'none',
+                            background: isDirty ? 'var(--teal)' : 'var(--cream-2)',
+                            color: isDirty ? '#fff' : 'var(--ink-faint)',
+                            fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.88rem',
+                            cursor: isDirty ? 'pointer' : 'not-allowed',
+                          }}>
+                          {saveLoading ? 'Saving…' : 'Save Changes'}
+                        </button>
+                        {isDirty && (
+                          <span style={{ fontSize: '.78rem', color: 'var(--coral)', fontWeight: 600 }}>
+                            Unsaved changes
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{ marginTop: 20, paddingTop: 18, borderTop: '1px solid var(--line-soft)' }}>
                     <div style={{ fontWeight: 700, fontSize: '.82rem', color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Documents</div>
@@ -459,7 +648,7 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td style={{ padding: '14px 16px' }}>
-                          <button onClick={() => { setSelected(s); setRejectionReason(''); setActionError(''); }}
+                          <button onClick={() => openModal(s)}
                             style={{ background: 'var(--teal-tint)', color: 'var(--teal-deep)', border: 'none', borderRadius: 8, padding: '7px 14px', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer' }}>
                             Review →
                           </button>
@@ -662,6 +851,7 @@ export default function AdminPage() {
           </>
         )}
       </div>
+      <Toast toasts={toasts} onRemove={() => {}} />
     </>
   );
 }
@@ -724,15 +914,20 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
 
 // ── Shared sub-components ────────────────────────────────────────────────────
 
-function Grid({ children }: { children: React.ReactNode }) {
-  return <div className="two-col-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>{children}</div>;
-}
-
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <div style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: '.88rem', fontWeight: 600 }}>{value}</div>
+    </div>
+  );
+}
+
+function ModalEditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>{label}</div>
+      {children}
     </div>
   );
 }

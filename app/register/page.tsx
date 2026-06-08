@@ -154,8 +154,11 @@ export default function RegisterPage() {
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'clamp(1.6rem,4vw,2.2rem)', letterSpacing: '-.03em', marginBottom: 6 }}>
           Complete your profile
         </h1>
-        <p style={{ color: 'var(--ink-soft)', fontSize: '.95rem', marginBottom: 28 }}>
+        <p style={{ color: 'var(--ink-soft)', fontSize: '.95rem', marginBottom: 16 }}>
           Fill in your details and upload your documents. Our team will review and verify your profile.
+        </p>
+        <p style={{ fontSize: '.8rem', color: 'var(--ink-soft)', marginBottom: 24 }}>
+          <span style={{ color: 'var(--coral)', fontWeight: 800 }}>*</span> Required
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -167,13 +170,13 @@ export default function RegisterPage() {
 
           {/* Personal Details */}
           <Section title="Personal Details">
-            <Field label="Full name (as in passport)">
+            <Field label="Full name (as in passport)" required>
               <input style={inp} value={form.full_name} onChange={e => set('full_name', e.target.value)} placeholder="e.g. Ishita Raman" required />
             </Field>
-            <Field label="Phone number with country code">
+            <Field label="Phone number with country code" required>
               <input style={inp} value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="e.g. +91 98765 43210" required />
             </Field>
-            <Field label="Country of origin">
+            <Field label="Country of origin" required>
               <select style={inp} value={form.country_of_origin} onChange={e => set('country_of_origin', e.target.value)} required>
                 <option value="">Select country</option>
                 {COUNTRIES.map(c => <option key={c}>{c}</option>)}
@@ -183,13 +186,13 @@ export default function RegisterPage() {
 
           {/* Academic Details */}
           <Section title="Academic Details">
-            <Field label="Country of education (destination)">
+            <Field label="Country of education (destination)" required>
               <select style={inp} value={form.country_of_education} onChange={e => set('country_of_education', e.target.value)} required>
                 <option value="">Select country</option>
                 {COUNTRIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="University / institution name">
+            <Field label="University / institution name" required>
               <select style={inp} value={form.university_name} onChange={e => handleUniversityChange(e.target.value)} required>
                 <option value="">Select university</option>
                 {universities.length === 0 && (
@@ -198,13 +201,16 @@ export default function RegisterPage() {
                 {universities.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
               </select>
             </Field>
-            <Field label="Degree level">
+            <Field label="Degree level" required>
               <select style={inp} value={form.degree_level} onChange={e => set('degree_level', e.target.value)} required>
                 <option value="">Select level</option>
                 {DEGREES.map(d => <option key={d}>{d}</option>)}
               </select>
             </Field>
-            <Field label="Course / programme name">
+            <Field label="Course / programme name" required>
+              <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
+                If your course is not listed, select <strong>Not sure</strong> — an admin will assign the correct course during review.
+              </p>
               <select
                 style={{ ...inp, opacity: !form.university_name ? 0.5 : 1 }}
                 value={form.course_name}
@@ -219,23 +225,24 @@ export default function RegisterPage() {
                   <option disabled value="">No courses configured for this university</option>
                 )}
                 {availableCourses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {form.university_name && <option value="Not sure">Not sure</option>}
               </select>
             </Field>
             <div className="two-col-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <Field label="Intake month">
+              <Field label="Intake month" required>
                 <select style={inp} value={form.intake_month} onChange={e => set('intake_month', e.target.value)} required>
                   <option value="">Month</option>
                   {MONTHS.map(m => <option key={m}>{m}</option>)}
                 </select>
               </Field>
-              <Field label="Intake year">
+              <Field label="Intake year" required>
                 <select style={inp} value={form.intake_year} onChange={e => set('intake_year', e.target.value)} required>
                   <option value="">Year</option>
                   {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </Field>
             </div>
-            <Field label="City (where you'll be studying)">
+            <Field label="City (where you'll be studying)" required>
               <select style={inp} value={form.city} onChange={e => set('city', e.target.value)} required>
                 <option value="">Select city</option>
                 {cities.length === 0 && (
@@ -252,7 +259,7 @@ export default function RegisterPage() {
               Passport and admission letter must be PDF. Profile photo must be JPEG or PNG. Max file size: 5MB per file. Documents are securely stored and deleted after verification.
             </p>
 
-            <Field label="Passport copy (PDF)">
+            <Field label="Passport copy (PDF)" required>
               <div
                 onClick={() => passportRef.current?.click()}
                 style={{ ...uploadBox, borderColor: passportFile ? 'var(--teal)' : 'var(--line)', background: passportFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
@@ -266,7 +273,7 @@ export default function RegisterPage() {
               </div>
             </Field>
 
-            <Field label="Admission letter (PDF)">
+            <Field label="Admission letter (PDF)" required>
               <div
                 onClick={() => admissionRef.current?.click()}
                 style={{ ...uploadBox, borderColor: admissionFile ? 'var(--teal)' : 'var(--line)', background: admissionFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
@@ -280,7 +287,7 @@ export default function RegisterPage() {
               </div>
             </Field>
 
-            <Field label="Profile photo">
+            <Field label="Profile photo" required>
               {profilePreview ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <img src={profilePreview} alt="Profile preview" style={{ width: 72, height: 72, borderRadius: 14, objectFit: 'cover', border: '2px solid var(--teal)' }} />
@@ -327,10 +334,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <label style={{ display: 'block', fontWeight: 700, fontSize: '.82rem', marginBottom: 6, color: 'var(--ink)' }}>{label}</label>
+      <label style={{ display: 'block', fontWeight: 700, fontSize: '.82rem', marginBottom: 6, color: 'var(--ink)' }}>
+        {label}{required && <span style={{ color: 'var(--coral)', marginLeft: 3, fontWeight: 800 }}>*</span>}
+      </label>
       {children}
     </div>
   );

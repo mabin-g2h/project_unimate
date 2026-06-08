@@ -16,7 +16,7 @@ export async function GET() {
       sp.university_name, sp.degree_level, sp.course_name,
       sp.intake_month, sp.intake_year,
       sp.passport_url, sp.admission_letter_url, sp.profile_picture_url,
-      sp.status, sp.submitted_at, sp.rejection_reason
+      sp.status, sp.submitted_at, sp.rejection_reason, sp.city
     FROM users u
     LEFT JOIN student_profiles sp ON sp.user_id = u.id
     WHERE u.role = 'student'
