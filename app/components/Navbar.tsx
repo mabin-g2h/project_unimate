@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import AppLogo from "./AppLogo";
 
 interface NavbarProps {
   name?: string;
@@ -26,22 +27,7 @@ export default function Navbar({ name, university }: NavbarProps) {
       borderBottom: "1px solid rgba(0,0,0,0.1)",
     }}>
       <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 60, maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: 11, background: "var(--teal)",
-            display: "grid", placeItems: "center",
-            boxShadow: "0 6px 14px -4px rgba(9,66,189,0.3)",
-            transform: "rotate(-6deg)",
-          }}>
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5S18 3 16.5 4.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.18rem", letterSpacing: "-.02em", lineHeight: 1 }}>uniMate</div>
-            <div style={{ fontSize: ".66rem", fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--teal)" }}>FlyMate Network</div>
-          </div>
-        </div>
+        <AppLogo height={40} />
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span style={{

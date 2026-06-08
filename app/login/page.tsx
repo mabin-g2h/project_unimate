@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import AppLogo from '@/app/components/AppLogo';
 
 type Mode = 'login' | 'signup';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
+  const [info, setInfo] = useState(
+    searchParams.get('reset') === 'success'
+      ? 'Password reset successfully. Sign in with your new password.'
+      : ''
+  );
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -59,16 +66,9 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: 440 }}>
 
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32, justifyContent: 'center' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--teal)', display: 'grid', placeItems: 'center', boxShadow: '0 6px 16px -4px rgba(9,66,189,0.3)', transform: 'rotate(-6deg)' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5S18 3 16.5 4.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', letterSpacing: '-.02em' }}>Uni Mate</div>
-            <div style={{ fontSize: '.66rem', fontWeight: 600, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>FlyMate Network</div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 32 }}>
+          <AppLogo height={60} />
+          <div style={{ fontSize: '.66rem', fontWeight: 600, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>FlyMate Network</div>
         </div>
 
         <div style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line-soft)', overflow: 'hidden' }}>
@@ -118,7 +118,14 @@ export default function LoginPage() {
               style={inputStyle}
             />
 
-            <label style={{ ...labelStyle, marginTop: 14 }}>Password</label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, marginBottom: 6 }}>
+              <label style={{ ...labelStyle, marginTop: 0, marginBottom: 0 }}>Password</label>
+              {mode === 'login' && (
+                <Link href="/forgot-password" style={{ fontSize: '.78rem', color: 'var(--teal)', fontWeight: 600, textDecoration: 'none' }}>
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <input
               type="password" required value={password} onChange={e => setPassword(e.target.value)}
               placeholder={mode === 'signup' ? 'Min. 8 characters' : '••••••••'}
@@ -147,6 +154,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
 

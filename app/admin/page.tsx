@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AppLogo from '@/app/components/AppLogo';
 
 interface Student {
   user_id: number; email: string; created_at: string;
@@ -17,6 +18,7 @@ interface Course { id: number; name: string; }
 interface University { id: number; name: string; courses: Course[]; }
 interface Airport { id: number; label: string; }
 interface Airline { id: number; name: string; }
+interface City { id: number; label: string; }
 interface AdminUser { id: number; email: string; created_at: string; }
 interface AdminInvite { id: string; email: string; expires_at: string; created_at: string; }
 
@@ -44,6 +46,7 @@ export default function AdminPage() {
   const [universities, setUniversities] = useState<University[]>([]);
   const [airports, setAirports] = useState<Airport[]>([]);
   const [airlines, setAirlines] = useState<Airline[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [dropdownsLoading, setDropdownsLoading] = useState(false);
   const [expandedUni, setExpandedUni] = useState<number | null>(null);
 
@@ -51,6 +54,7 @@ export default function AdminPage() {
   const [newCourse, setNewCourse] = useState<Record<number, string>>({});
   const [newAirport, setNewAirport] = useState('');
   const [newAirline, setNewAirline] = useState('');
+  const [newCity, setNewCity] = useState('');
   const [ddError, setDdError] = useState('');
 
   // ── Admins tab state ──────────────────────────────────────────────────────
@@ -75,14 +79,16 @@ export default function AdminPage() {
 
   const loadDropdowns = useCallback(async () => {
     setDropdownsLoading(true);
-    const [ur, ar, al] = await Promise.all([
+    const [ur, ar, al, ci] = await Promise.all([
       fetch('/api/options/universities').then(r => r.json()),
       fetch('/api/options/airports').then(r => r.json()),
       fetch('/api/options/airlines').then(r => r.json()),
+      fetch('/api/options/cities').then(r => r.json()),
     ]);
     setUniversities(ur.universities ?? []);
     setAirports(ar.airports ?? []);
     setAirlines(al.airlines ?? []);
+    setCities(ci.cities ?? []);
     setDropdownsLoading(false);
   }, []);
 
@@ -207,6 +213,24 @@ export default function AdminPage() {
 
   async function deleteAirline(id: number) {
     await fetch(`/api/admin/options/airlines/${id}`, { method: 'DELETE' });
+    loadDropdowns();
+  }
+
+  async function addCity() {
+    if (!newCity.trim()) return;
+    setDdError('');
+    const res = await fetch('/api/admin/options/cities', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: newCity.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setDdError(data.error ?? 'Failed'); return; }
+    setNewCity('');
+    loadDropdowns();
+  }
+
+  async function deleteCity(id: number) {
+    await fetch(`/api/admin/options/cities/${id}`, { method: 'DELETE' });
     loadDropdowns();
   }
 
@@ -347,16 +371,9 @@ export default function AdminPage() {
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 20px 60px' }}>
         {/* Nav bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--teal)', display: 'grid', placeItems: 'center', transform: 'rotate(-6deg)', boxShadow: '0 4px 10px -3px rgba(9,66,189,0.3)' }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5S18 3 16.5 4.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-              </svg>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-.02em', lineHeight: 1 }}>Uni Mate</div>
-              <div style={{ fontSize: '.65rem', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--coral)' }}>Admin Portal</div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AppLogo height={36} />
+            <div style={{ fontSize: '.65rem', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--coral)' }}>Admin Portal</div>
           </div>
           <button onClick={handleLogout}
             style={{ background: 'none', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 16px', cursor: 'pointer', color: 'var(--ink-soft)', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '.84rem' }}>
@@ -535,7 +552,7 @@ export default function AdminPage() {
         {tab === 'dropdowns' && (
           <>
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-.03em', marginBottom: 6 }}>Manage Dropdowns</h1>
-            <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Add or remove values for university, course, airport, and airline dropdowns shown to students.</p>
+            <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Add or remove values for university, course, airport, airline, and city dropdowns shown to students.</p>
 
             {ddError && (
               <div style={{ background: 'var(--coral-tint)', border: '1px solid var(--coral)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, color: 'var(--coral-deep)', fontSize: '.86rem', fontWeight: 600 }}>
@@ -622,6 +639,21 @@ export default function AdminPage() {
                   {airlines.length === 0 && <EmptyHint>No airlines yet.</EmptyHint>}
                   {airlines.map(a => (
                     <ItemRow key={a.id} label={a.name} onDelete={() => deleteAirline(a.id)} />
+                  ))}
+                </DdSection>
+
+                {/* Cities */}
+                <DdSection title="Cities" hint="Destination cities abroad. Students pick their city at registration; powers same-city peer discovery on the dashboard.">
+                  <AddRow
+                    placeholder='e.g. Melbourne'
+                    value={newCity}
+                    onChange={setNewCity}
+                    onAdd={addCity}
+                    label="Add city"
+                  />
+                  {cities.length === 0 && <EmptyHint>No cities yet.</EmptyHint>}
+                  {cities.map(c => (
+                    <ItemRow key={c.id} label={c.label} onDelete={() => deleteCity(c.id)} />
                   ))}
                 </DdSection>
 

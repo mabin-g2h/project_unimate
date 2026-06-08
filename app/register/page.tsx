@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegistration } from './context';
+import AppLogo from '@/app/components/AppLogo';
 
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -11,12 +12,14 @@ const YEARS = [2024, 2025, 2026, 2027];
 
 interface Course { id: number; name: string; }
 interface University { id: number; name: string; courses: Course[]; }
+interface City { id: number; label: string; }
 
 interface FormState {
   full_name: string; phone: string;
   country_of_origin: string; country_of_education: string;
   university_name: string; degree_level: string;
   course_name: string; intake_month: string; intake_year: string;
+  city: string;
 }
 
 function resizeImage(file: File, maxPx = 400): Promise<File> {
@@ -49,7 +52,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [form, setForm] = useState<FormState>({
     full_name: '', phone: '', country_of_origin: '', country_of_education: '',
-    university_name: '', degree_level: '', course_name: '', intake_month: '', intake_year: '',
+    university_name: '', degree_level: '', course_name: '', intake_month: '', intake_year: '', city: '',
   });
   const [passportFile, setPassportFile] = useState<File | null>(null);
   const [admissionFile, setAdmissionFile] = useState<File | null>(null);
@@ -58,6 +61,7 @@ export default function RegisterPage() {
 
   const [universities, setUniversities] = useState<University[]>([]);
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
 
   const passportRef = useRef<HTMLInputElement>(null);
   const admissionRef = useRef<HTMLInputElement>(null);
@@ -94,6 +98,9 @@ export default function RegisterPage() {
           setAvailableCourses(uni?.courses ?? []);
         }
       });
+    fetch('/api/options/cities')
+      .then(r => r.json())
+      .then(({ cities: list }) => setCities(list ?? []));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(field: keyof FormState, value: string) {
@@ -140,15 +147,8 @@ export default function RegisterPage() {
     <>
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px 60px' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--teal)', display: 'grid', placeItems: 'center', transform: 'rotate(-6deg)', boxShadow: '0 4px 10px -3px rgba(9,66,189,0.3)', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5S18 3 16.5 4.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-.02em' }}>Uni Mate</div>
-          </div>
+        <div style={{ marginBottom: 28 }}>
+          <AppLogo height={48} />
         </div>
 
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'clamp(1.6rem,4vw,2.2rem)', letterSpacing: '-.03em', marginBottom: 6 }}>
@@ -235,6 +235,15 @@ export default function RegisterPage() {
                 </select>
               </Field>
             </div>
+            <Field label="City (where you'll be studying)">
+              <select style={inp} value={form.city} onChange={e => set('city', e.target.value)} required>
+                <option value="">Select city</option>
+                {cities.length === 0 && (
+                  <option disabled value="">No cities configured — contact admin</option>
+                )}
+                {cities.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+              </select>
+            </Field>
           </Section>
 
           {/* Documents */}

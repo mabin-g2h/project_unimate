@@ -9,9 +9,11 @@ CREATE TABLE users (
   email                VARCHAR(255) UNIQUE NOT NULL,
   password_hash        VARCHAR(255) NOT NULL,
   email_verified       BOOLEAN DEFAULT false,
-  verification_token   VARCHAR(255),
-  verification_expires TIMESTAMPTZ,
-  role                 VARCHAR(20) DEFAULT 'student',   -- 'student' | 'admin'
+  verification_token    VARCHAR(255),
+  verification_expires  TIMESTAMPTZ,
+  password_reset_token  VARCHAR(255),
+  password_reset_expires TIMESTAMPTZ,
+  role                  VARCHAR(20) DEFAULT 'student',   -- 'student' | 'admin'
   created_at           TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -36,7 +38,8 @@ CREATE TABLE student_profiles (
   reviewed_by           INTEGER REFERENCES users(id),
   rejection_reason      TEXT,
   share_phone           BOOLEAN DEFAULT false,          -- student opt-in to share phone with peers
-  consented_at          TIMESTAMPTZ                      -- set at registration; NULL = no consent recorded
+  consented_at          TIMESTAMPTZ,                     -- set at registration; NULL = no consent recorded
+  city                  VARCHAR(255)                     -- destination city abroad; powers same-city peer discovery; NULL for pre-feature profiles
 );
 
 CREATE TABLE flight_details (
@@ -88,6 +91,12 @@ CREATE TABLE airlines (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE cities (
+  id         SERIAL PRIMARY KEY,
+  label      VARCHAR(255) UNIQUE NOT NULL,  -- destination city abroad, e.g. "Melbourne"
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ─── Migrations (apply to existing databases in order) ────────────────────────
 
 -- Migration 001 — peer directory phone opt-in (added with FlyMate peer directory feature)
@@ -111,3 +120,11 @@ CREATE TABLE airlines (
 
 -- Migration 006 — admin invite-by-email flow
 -- CREATE TABLE admin_invites ( id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL, token VARCHAR(255) UNIQUE NOT NULL, expires_at TIMESTAMPTZ NOT NULL, invited_by INT REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMPTZ DEFAULT NOW() );
+
+-- Migration 007 — destination city (added with dashboard peer scope filters)
+-- CREATE TABLE cities ( id SERIAL PRIMARY KEY, label VARCHAR(255) UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW() );
+-- ALTER TABLE student_profiles ADD COLUMN city VARCHAR(255);
+
+-- Migration 008 — forgot password reset tokens
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255);
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;

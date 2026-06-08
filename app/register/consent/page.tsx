@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegistration } from '../context';
+import AppLogo from '@/app/components/AppLogo';
 
 const CONSENTS = [
   {
@@ -73,13 +74,8 @@ export default function ConsentPage() {
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px 60px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--teal)', display: 'grid', placeItems: 'center', transform: 'rotate(-6deg)', boxShadow: '0 4px 10px -3px rgba(9,66,189,0.3)', flexShrink: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5S18 3 16.5 4.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-          </svg>
-        </div>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-.02em' }}>Uni Mate</div>
+      <div style={{ marginBottom: 28 }}>
+        <AppLogo height={48} />
       </div>
 
       {/* Progress */}
@@ -107,6 +103,7 @@ export default function ConsentPage() {
           <SummaryRow label="Course" value={data.form.course_name} />
           <SummaryRow label="Intake" value={`${data.form.intake_month} ${data.form.intake_year}`} />
           <SummaryRow label="Degree" value={data.form.degree_level} />
+          <SummaryRow label="City" value={data.form.city} />
           <SummaryRow label="Documents" value="Passport, Admission letter, Photo" />
         </div>
       </div>
