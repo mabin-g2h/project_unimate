@@ -28,11 +28,14 @@ interface BoardingPassProps {
   city?: string | null;
   flightDetails: FlightDetails | null;
   onAddFlight: () => void;
+  sharePhone: boolean;
+  onTogglePhone: () => void;
 }
 
 export default function BoardingPass({
   name, university, course, degreeLevel,
   intakeMonth, intakeYear, city, flightDetails, onAddFlight,
+  sharePhone, onTogglePhone,
 }: BoardingPassProps) {
   return (
     <div className="boarding-pass-layout" style={{
@@ -85,6 +88,30 @@ export default function BoardingPass({
             </div>
           ))}
         </div>
+
+        <button
+          onClick={onTogglePhone}
+          style={{
+            marginTop: 16, display: "inline-flex", alignItems: "center", gap: 9,
+            background: "none", border: "none", padding: "8px 0", cursor: "pointer",
+            fontFamily: "var(--font-body)",
+          }}
+        >
+          <span style={{
+            width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
+            background: sharePhone ? "#22c55e" : "#ef4444",
+            boxShadow: sharePhone
+              ? "0 0 0 3px rgba(34,197,94,.25)"
+              : "0 0 0 3px rgba(239,68,68,.22)",
+            display: "inline-block", transition: "background .2s, box-shadow .2s",
+          }} />
+          <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink-soft)" }}>
+            Share my number
+          </span>
+          <span style={{ fontSize: ".78rem", color: sharePhone ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
+            {sharePhone ? "On" : "Off"}
+          </span>
+        </button>
       </div>
 
       {/* Stub */}

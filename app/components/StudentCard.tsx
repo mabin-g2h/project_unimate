@@ -78,21 +78,23 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
       className="card"
     >
       <div style={{ display: "flex", gap: 13, alignItems: "flex-start" }}>
-        <div style={{
-          width: 54, height: 54, borderRadius: 15, flexShrink: 0,
-          display: "grid", placeItems: "center", overflow: "hidden",
-          fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.2rem", color: "#fff",
-          position: "relative", background: avColor(s.full_name),
-        }}>
-          {s.profile_picture_url ? (
-            <img
-              src={s.profile_picture_url}
-              alt={s.full_name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            initials(s.full_name)
-          )}
+        <div style={{ width: 54, height: 54, flexShrink: 0, position: "relative" }}>
+          <div style={{
+            width: "100%", height: "100%", borderRadius: 15, overflow: "hidden",
+            display: "grid", placeItems: "center",
+            fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.2rem", color: "#fff",
+            background: avColor(s.full_name),
+          }}>
+            {s.profile_picture_url ? (
+              <img
+                src={s.profile_picture_url}
+                alt={s.full_name}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              initials(s.full_name)
+            )}
+          </div>
           <span style={{
             position: "absolute", bottom: -4, right: -4, width: 20, height: 20, borderRadius: "50%",
             background: "var(--green)", display: "grid", placeItems: "center", border: "2.5px solid var(--paper)",

@@ -69,7 +69,10 @@ body {
   .admin-stats-grid { grid-template-columns: 1fr !important; }
 }
 
-/* Student dashboard stats: stay 2-col on most phones, 1-col only on very small */
+/* Student dashboard stats: 5-col → 2-col on tablet/phone → 1-col on very small */
+@media (max-width: 700px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
 @media (max-width: 360px) {
   .stats-grid { grid-template-columns: 1fr !important; }
 }
