@@ -18,6 +18,8 @@ interface MyProfile {
   intake_month: string;
   intake_year: number;
   country_of_origin: string;
+  country_of_education: string;
+  city: string | null;
   profile_picture_url: string | null;
   phone: string | null;
   share_phone: boolean;
@@ -161,6 +163,7 @@ export default function Home() {
               degreeLevel={myProfile.degree_level}
               intakeMonth={myProfile.intake_month}
               intakeYear={myProfile.intake_year}
+              city={myProfile.city}
               flightDetails={myFlight}
               onAddFlight={() => setShowFlightModal(true)}
             />
@@ -224,7 +227,7 @@ export default function Home() {
         myTravelDate={myProfile?.travel_date ?? null}
         myDepartureFrom={myProfile?.departure_from ?? null}
         myArrival={myProfile?.arrival ?? null}
-        universityName={myProfile?.university_name ?? ""}
+        myCountry={myProfile?.country_of_education ?? ""}
         onToast={showToast}
       />
 
