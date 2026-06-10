@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendRegistrationAcknowledgement } from '@/lib/email';
 import { put } from '@vercel/blob';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 export const runtime = 'nodejs';
 
@@ -36,6 +37,13 @@ export async function POST(request: NextRequest) {
   }
   const courseName = ((formData.get('course_name') as string) ?? '').trim().replace(/\s+/g, ' ');
 
+  // Validate + normalise phone to E.164 (format-only check, no SMS/OTP)
+  const parsedPhone = parsePhoneNumberFromString(((formData.get('phone') as string) ?? '').trim());
+  if (!parsedPhone || !parsedPhone.isValid()) {
+    return NextResponse.json({ error: 'Invalid phone number.' }, { status: 400 });
+  }
+  const phoneE164 = parsedPhone.number;
+
   async function saveFile(field: string, allowed: string[]): Promise<string | null> {
     const file = formData.get(field) as File | null;
     if (!file || file.size === 0) return null;
@@ -60,7 +68,7 @@ export async function POST(request: NextRequest) {
     ) VALUES (
       ${session.userId},
       ${fullName},
-      ${formData.get('phone') as string},
+      ${phoneE164},
       ${formData.get('country_of_origin') as string},
       ${formData.get('country_of_education') as string},
       ${formData.get('university_name') as string},
