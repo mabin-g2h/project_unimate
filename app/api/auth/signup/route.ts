@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const verificationToken = uuid();
-    const verificationExpires = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const verificationExpires = new Date(Date.now() + 12 * 60 * 60 * 1000);
     const role = email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'admin' : 'student';
 
     await sql`

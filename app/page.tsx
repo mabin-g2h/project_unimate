@@ -179,6 +179,7 @@ export default function Home() {
               onAddFlight={() => setShowFlightModal(true)}
               sharePhone={sharePhone}
               onTogglePhone={toggleSharePhone}
+              phone={myProfile.phone}
             />
           )}
 
