@@ -181,7 +181,7 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
             .sc-drag  { display:none; }
             .sc-modal-header { display:flex; flex-direction:row; gap:16px; align-items:flex-start; margin-bottom:18px; }
             .sc-modal-identity { flex:1; min-width:0; padding-top:4px; }
-            .sc-modal-name-row { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+            .sc-modal-name-row { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-right:38px; }
             .sc-modal-inner { padding: 20px 24px 24px; position:relative; }
             @media (max-width: 480px) {
               .sc-outer { align-items:flex-end !important; padding:0 !important; }
@@ -189,7 +189,7 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
               .sc-drag  { display:flex; justify-content:center; padding:10px 0 4px; }
               .sc-modal-header { flex-direction:column !important; align-items:center !important; text-align:center; }
               .sc-modal-identity { padding-top:0 !important; display:flex; flex-direction:column; align-items:center; }
-              .sc-modal-name-row { flex-direction:column; align-items:center; gap:8px; }
+              .sc-modal-name-row { flex-direction:column; align-items:center; gap:8px; padding-right:0 !important; }
               .sc-modal-inner { padding-bottom: max(24px, env(safe-area-inset-bottom)) !important; }
             }
           `}</style>

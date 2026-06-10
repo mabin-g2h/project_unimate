@@ -34,8 +34,7 @@ interface EditFormState {
   city: string;
 }
 
-interface Course { id: number; name: string; }
-interface University { id: number; name: string; courses: Course[]; }
+interface University { id: number; name: string; }
 interface Airport { id: number; label: string; }
 interface Airline { id: number; name: string; }
 interface City { id: number; label: string; }
@@ -67,7 +66,6 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
   const [editUniversities, setEditUniversities] = useState<University[]>([]);
   const [editCities, setEditCities] = useState<City[]>([]);
-  const [editCourses, setEditCourses] = useState<Course[]>([]);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [isDirty, setIsDirty] = useState(false);
@@ -78,10 +76,8 @@ export default function AdminPage() {
   const [airlines, setAirlines] = useState<Airline[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [dropdownsLoading, setDropdownsLoading] = useState(false);
-  const [expandedUni, setExpandedUni] = useState<number | null>(null);
 
   const [newUni, setNewUni] = useState('');
-  const [newCourse, setNewCourse] = useState<Record<number, string>>({});
   const [newAirport, setNewAirport] = useState('');
   const [newAirline, setNewAirline] = useState('');
   const [newCity, setNewCity] = useState('');
@@ -169,8 +165,6 @@ export default function AdminPage() {
       intake_year: s.intake_year != null ? String(s.intake_year) : '',
       city: s.city ?? '',
     });
-    const uni = editUniversities.find(u => u.name === (s.university_name ?? ''));
-    setEditCourses(uni?.courses ?? []);
   }
 
   function closeModal() {
@@ -179,9 +173,7 @@ export default function AdminPage() {
   }
 
   function handleEditUniversityChange(name: string) {
-    const uni = editUniversities.find(u => u.name === name);
-    setEditCourses(uni?.courses ?? []);
-    setEditForm(f => f ? { ...f, university_name: name, course_name: '' } : f);
+    setEditForm(f => f ? { ...f, university_name: name } : f);
     setIsDirty(true);
   }
 
@@ -241,26 +233,6 @@ export default function AdminPage() {
 
   async function deleteUniversity(id: number) {
     await fetch(`/api/admin/options/universities/${id}`, { method: 'DELETE' });
-    if (expandedUni === id) setExpandedUni(null);
-    loadDropdowns();
-  }
-
-  async function addCourse(uniId: number) {
-    const name = newCourse[uniId]?.trim();
-    if (!name) return;
-    setDdError('');
-    const res = await fetch(`/api/admin/options/universities/${uniId}/courses`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    const data = await res.json();
-    if (!res.ok) { setDdError(data.error ?? 'Failed'); return; }
-    setNewCourse(prev => ({ ...prev, [uniId]: '' }));
-    loadDropdowns();
-  }
-
-  async function deleteCourse(id: number) {
-    await fetch(`/api/admin/options/courses/${id}`, { method: 'DELETE' });
     loadDropdowns();
   }
 
@@ -437,14 +409,10 @@ export default function AdminPage() {
                         </ModalEditField>
 
                         <ModalEditField label="Course">
-                          <select style={{ ...inp, opacity: !editForm.university_name ? 0.5 : 1 }}
+                          <input type="text" style={inp}
                             value={editForm.course_name}
-                            disabled={!editForm.university_name}
-                            onChange={e => { setEditForm(f => f ? { ...f, course_name: e.target.value } : f); setIsDirty(true); }}>
-                            <option value="">Select course</option>
-                            {editCourses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                            {editForm.university_name && <option value="Not sure">Not sure</option>}
-                          </select>
+                            placeholder="Programme name"
+                            onChange={e => { setEditForm(f => f ? { ...f, course_name: e.target.value } : f); setIsDirty(true); }} />
                         </ModalEditField>
 
                         <ModalEditField label="City">
@@ -754,8 +722,8 @@ export default function AdminPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-                {/* Universities & Courses */}
-                <DdSection title="Universities & Courses" hint="Add a university, then expand it to add its courses.">
+                {/* Universities */}
+                <DdSection title="Universities" hint="Shown in the university dropdown on the registration form. Course is now a free-text field students fill in themselves.">
                   <AddRow
                     placeholder="e.g. University of Melbourne"
                     value={newUni}
@@ -765,38 +733,10 @@ export default function AdminPage() {
                   />
                   {universities.length === 0 && <EmptyHint>No universities yet.</EmptyHint>}
                   {universities.map(u => (
-                    <div key={u.id} style={{ border: '1px solid var(--line-soft)', borderRadius: 10, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', padding: '11px 14px', background: 'var(--cream-2)', gap: 10 }}>
-                        <button
-                          onClick={() => setExpandedUni(expandedUni === u.id ? null : u.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--teal-deep)', fontWeight: 700, fontSize: '.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ display: 'inline-block', transition: '.2s', transform: expandedUni === u.id ? 'rotate(90deg)' : 'none' }}>▶</span>
-                          {u.name}
-                          <span style={{ color: 'var(--ink-faint)', fontWeight: 400 }}>({u.courses.length} {u.courses.length === 1 ? 'course' : 'courses'})</span>
-                        </button>
-                        <div style={{ flex: 1 }} />
-                        <DeleteBtn onClick={() => deleteUniversity(u.id)} />
-                      </div>
-
-                      {expandedUni === u.id && (
-                        <div style={{ padding: '14px', background: 'var(--paper)' }}>
-                          <AddRow
-                            placeholder="e.g. MSc Information Technology"
-                            value={newCourse[u.id] ?? ''}
-                            onChange={v => setNewCourse(prev => ({ ...prev, [u.id]: v }))}
-                            onAdd={() => addCourse(u.id)}
-                            label="Add course"
-                            small
-                          />
-                          {u.courses.length === 0 && <EmptyHint>No courses yet — add one above.</EmptyHint>}
-                          {u.courses.map(c => (
-                            <div key={c.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 4px', borderBottom: '1px solid var(--line-soft)' }}>
-                              <span style={{ flex: 1, fontSize: '.88rem' }}>{c.name}</span>
-                              <DeleteBtn onClick={() => deleteCourse(c.id)} />
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '11px 14px', background: 'var(--cream-2)', border: '1px solid var(--line-soft)', borderRadius: 10, gap: 10 }}>
+                      <span style={{ fontWeight: 600, fontSize: '.86rem' }}>{u.name}</span>
+                      <div style={{ flex: 1 }} />
+                      <DeleteBtn onClick={() => deleteUniversity(u.id)} />
                     </div>
                   ))}
                 </DdSection>
