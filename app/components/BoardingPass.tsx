@@ -18,8 +18,17 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function daysToFly(iso: string): number {
+  const now = new Date();
+  const t = new Date(iso + "T00:00:00");
+  const a = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const b = Date.UTC(t.getFullYear(), t.getMonth(), t.getDate());
+  return Math.round((b - a) / 86400000);
+}
+
 interface BoardingPassProps {
   name: string;
+  profilePictureUrl?: string | null;
   university: string;
   course: string;
   degreeLevel: string;
@@ -33,10 +42,11 @@ interface BoardingPassProps {
 }
 
 export default function BoardingPass({
-  name, university, course, degreeLevel,
+  name, profilePictureUrl, university, course, degreeLevel,
   intakeMonth, intakeYear, city, flightDetails, onAddFlight,
   sharePhone, onTogglePhone,
 }: BoardingPassProps) {
+  const days = flightDetails ? daysToFly(flightDetails.travel_date) : null;
   return (
     <div className="boarding-pass-layout" style={{
       marginTop: 24, background: "var(--paper)", borderRadius: "var(--radius)",
@@ -49,14 +59,17 @@ export default function BoardingPass({
       <div style={{ flex: 1, padding: "26px 28px", minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <div style={{
-            width: 74, height: 74, borderRadius: 20, flexShrink: 0, display: "grid", placeItems: "center",
+            width: 74, height: 74, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center",
             fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.7rem", color: "#fff",
             background: "linear-gradient(140deg,var(--teal),var(--teal-deep))",
-            boxShadow: "0 12px 22px -8px rgba(9,66,189,0.4)", position: "relative",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.08)", position: "relative",
           }}>
-            {initials(name)}
+            {profilePictureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profilePictureUrl} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%", display: "block" }} />
+            ) : initials(name)}
             <div style={{
-              position: "absolute", bottom: -5, right: -5, width: 28, height: 28, borderRadius: "50%",
+              position: "absolute", bottom: -1, right: -1, width: 26, height: 26, borderRadius: "50%",
               background: "var(--green)", display: "grid", placeItems: "center", border: "3px solid var(--paper)",
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -75,7 +88,7 @@ export default function BoardingPass({
           </div>
         </div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 22px", marginTop: 20, paddingTop: 18, borderTop: "1px dashed var(--line)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 22px", marginTop: 28, paddingTop: 20, borderTop: "1px dashed var(--line)" }}>
           {[
             { label: "University", value: university },
             { label: "Programme", value: `${degreeLevel} — ${course}` },
@@ -125,8 +138,25 @@ export default function BoardingPass({
 
         {flightDetails ? (
           <>
+            <button
+              onClick={onAddFlight}
+              title="Edit flight details"
+              aria-label="Edit flight details"
+              style={{
+                position: "absolute", top: 12, right: 12, zIndex: 2,
+                width: 26, height: 26, borderRadius: "50%", padding: 0,
+                background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.3)",
+                color: "#fff", cursor: "pointer", display: "grid", placeItems: "center",
+                transition: "background .15s",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, paddingRight: 30 }}>
                 <div>
                   <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.7rem", lineHeight: 1 }}>
                     {extractCode(flightDetails.departure_from)}
@@ -149,6 +179,30 @@ export default function BoardingPass({
               </div>
             </div>
 
+            {days !== null && days >= 0 && (
+              <div className="days-to-fly-pill">
+                <span className="dtf-row dtf-row--track">
+                  <span className="dtf-airport dtf-airport--left" />
+                  <span className="dtf-runway-full">
+                    <span className="dtf-trail" />
+                    <span className="dtf-plane-wrap">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.5 19h19v2h-19zM21 14.6c.2-.8-.3-1.6-1-1.8l-5.5-1.5L8.2 3.8 6.3 4.3l3.7 6.4-5.2-1.4-1.6-2.6-1.5.4 1.1 4 .9 3.3 16 4.3c.8.2 1.6-.3 1.8-1z" />
+                      </svg>
+                    </span>
+                  </span>
+                  <span className="dtf-airport dtf-airport--right" />
+                </span>
+                <span className="dtf-row dtf-row--label">
+                  <span className="dtf-label-text">
+                    {days === 0
+                      ? "Boarding today"
+                      : <>Boards in <strong className="dtf-label-days">{days}</strong> {days === 1 ? "day" : "days"}</>}
+                  </span>
+                </span>
+              </div>
+            )}
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 10px", margin: "18px 0" }}>
               {[
                 { label: "Travel date", value: fmtDate(flightDetails.travel_date) },
@@ -161,17 +215,6 @@ export default function BoardingPass({
               ))}
             </div>
 
-            <button
-              onClick={onAddFlight}
-              style={{
-                background: "rgba(255,255,255,.16)", border: "1px solid rgba(255,255,255,.35)",
-                borderRadius: 10, padding: "9px 12px", cursor: "pointer",
-                color: "#fff", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: ".78rem",
-                textAlign: "left", width: "100%",
-              }}
-            >
-              ✏️ Edit flight details
-            </button>
           </>
         ) : (
           <>

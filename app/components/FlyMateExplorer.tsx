@@ -84,11 +84,12 @@ interface Props {
   myTravelDate: string | null;
   myDepartureFrom: string | null;
   myArrival: string | null;
+  myAirline: string | null;
   myCountry: string;
   onToast: (title: string, sub: string) => void;
 }
 
-export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, myArrival, myCountry, onToast }: Props) {
+export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, myArrival, myAirline, myCountry, onToast }: Props) {
   const [q, setQ] = useState("");
   const [phoneOnly, setPhoneOnly] = useState(false);
   const [sort, setSort] = useState("match");
@@ -367,7 +368,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 14 }}>
               {list.map((s, i) => (
-                <StudentCard key={s.id} peer={s} myTravelDate={myTravelDate} myDepartureFrom={myDepartureFrom} myArrival={myArrival} index={i} onToast={onToast} />
+                <StudentCard key={s.id} peer={s} myTravelDate={myTravelDate} myDepartureFrom={myDepartureFrom} myArrival={myArrival} myAirline={myAirline} index={i} onToast={onToast} />
               ))}
             </div>
           )}

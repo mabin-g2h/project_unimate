@@ -76,17 +76,20 @@ interface Props {
   myTravelDate: string | null;
   myDepartureFrom: string | null;
   myArrival: string | null;
+  myAirline: string | null;
   index: number;
   onToast: (title: string, sub: string) => void;
 }
 
-export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, myArrival, index: i }: Props) {
+export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, myArrival, myAirline, index: i }: Props) {
   const [open, setOpen] = useState(false);
 
   const sameDate = !!(myTravelDate && s.travel_date && s.travel_date === myTravelDate);
-  const sameRoute = sameDate &&
-    !!myDepartureFrom && !!myArrival &&
-    s.departure_from === myDepartureFrom && s.arrival === myArrival;
+  const sameFlight = sameDate &&
+    !!myDepartureFrom && !!myArrival && !!myAirline &&
+    s.departure_from === myDepartureFrom &&
+    s.arrival === myArrival &&
+    s.airline === myAirline;
 
   const flightLine = s.travel_date
     ? [
@@ -103,7 +106,7 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  const flightBadge = (sameRoute || sameDate) && (
+  const flightBadge = (sameFlight || sameDate) && (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
       background: "#34C759", color: "#fff",
@@ -114,7 +117,7 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
       <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
         <path d="M2.5 19h19v2h-19zM21 14.6c.2-.8-.3-1.6-1-1.8L14.5 11 8.2 3.8 6.3 4.3l3.7 6.4-5.2-1.4-1.6-2.6-1.5.4 1.1 4 .9 3.3 16 4.3c.8.2 1.6-.3 1.8-1z" />
       </svg>
-      {sameRoute ? "Same flight!" : "Same day"}
+      {sameFlight ? "Same flight!" : "Same day"}
     </span>
   );
 

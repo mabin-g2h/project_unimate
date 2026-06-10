@@ -25,6 +25,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 - **Email**: Nodemailer via Gmail SMTP
 - **File storage**: Vercel Blob (`@vercel/blob`) — public URLs stored in DB; `put()` on upload, `del()` on admin review
 - **IDs**: `uuid` v14 (used for email-verification and password-reset tokens)
+- **Phone**: `react-phone-number-input` (country-dropdown input on registration) + `libphonenumber-js` — format-only validation (no OTP/SMS); numbers stored normalised as `+E.164`, validated client-side and again in `/api/student/register`
 
 ## Project Structure
 
@@ -55,6 +56,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     /student/register/route.ts           # POST — FormData with files + consents_accepted flag; validates consent, inserts student_profiles row with consented_at = NOW()
     /admin/students/route.ts                          # GET    — list all student applications (admin only)
     /admin/students/[id]/review/route.ts              # POST   — approve/reject; deletes passport+admission letter from Blob; sends email
+    /admin/students/[id]/profile/route.ts             # PATCH  — admin edit of a student's profile fields (name, phone, country, university, degree, course, intake, city)
     /admin/admins/route.ts                            # GET    — list admin users + pending invites; POST — send admin invite email (48-hour token)
     /admin/admins/[id]/route.ts                       # DELETE — demote admin to student (cannot remove self)
     /admin/admins/invite/[id]/route.ts                # DELETE — revoke a pending admin invite
@@ -79,8 +81,8 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     /students/share-phone/route.ts       # PUT  — toggle share_phone boolean
   /components/
     AppLogo.tsx                          # Shared logo component — renders public/unimatelogo.png via next/image (unoptimized); accepts height prop
-    Navbar.tsx                           # Sticky nav with real user info + sign-out button
-    BoardingPass.tsx                     # Boarding-pass card — real profile (incl. city) + flight details; accepts FlightDetails props
+    Navbar.tsx                           # Sticky nav — logo + Verified badge + sign-out button (no user name/avatar; takes no props)
+    BoardingPass.tsx                     # Boarding-pass card — real profile (incl. city, round profile-photo avatar) + flight details; accepts FlightDetails + profilePictureUrl props; blue stub shows an animated "BOARDS IN N DAYS" countdown pill (computed client-side from travel_date) with a plane-along-runway animation (CSS in globals.css)
     FlyMateExplorer.tsx                  # Peer discovery UI — 2-col layout (filters horizontal row + right services sidebar); live DB data; University/City/Course/Degree/Intake dropdowns + active-filter chips + search/sort; services data inlined (4 cards, icon+title+tag+CTA only); mobile filter drawer; peer grid uses minmax(170px,1fr); accepts Peer[] prop
     StudentCard.tsx                      # Compact portrait tile (88px avatar, name, university, city — click to open detail modal); exports Peer interface; includes Avatar sub-component; Apple-style sheet modal with backdrop blur, Escape key close, bottom-sheet on mobile with safe-area inset
     FlightDetailsModal.tsx               # Modal form: departure, arrival, date, airline; exports FlightDetails interface
@@ -151,7 +153,7 @@ BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add 
 
 ## Known Gaps (not MVP-blocking for auth/admin flows)
 
-- **Server-side field validation** in `/api/student/register` checks all required fields are present (returns 400 if blank); `course_name` is trimmed + whitespace-collapsed on save. No max-length enforcement yet beyond the `VARCHAR(255)` column.
+- **Server-side field validation** in `/api/student/register` checks all required fields are present (returns 400 if blank); `course_name` is trimmed + whitespace-collapsed on save; `phone` is parsed/validated with `libphonenumber-js` and stored as `+E.164` (returns 400 if invalid). No max-length enforcement yet beyond the `VARCHAR(255)` column. Phone is **format-validated only** — not ownership-verified (no OTP); the admin review + passport upload covers authenticity.
 - **`student_profiles.city` is nullable and backfill-only-on-reapply** — profiles approved before the city feature have `city = NULL` and won't surface in anyone's "My city" scope until re-registered. There is no profile-edit flow to set it retroactively.
 
 ## Phase 1 Scope — What Exists
@@ -164,9 +166,9 @@ BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add 
 - File uploads via Vercel Blob (public URLs); sensitive documents deleted from Blob after admin review
 - Live peer directory: real approved students heading to the same destination country, profile photos, email + opt-in phone
 - Dashboard peer directory: the peers query (`/api/students/peers`) returns **every approved student heading to my `country_of_education`**; the default dashboard view shows them all. `FlyMateExplorer` then narrows client-side with five composable "pick any" dropdowns — **University, City, Course, Degree, Intake** (options derived from the country pool, default "All") — plus active-filter chips + "Clear all", search, sort, and a phone-share toggle. 2-col layout: filters+peer grid on left, compact service sidebar on right (collapses to 1-col on narrow viewports). Mobile: filters hidden behind a "Filters" toggle button that opens a fixed drawer overlay. Selecting your own university/city gives "same university"/"same city"; University+City together give campus-level precision. Own city shown on the boarding pass; each peer card shows the peer's university + city
-- Peer cards are compact portrait tiles (88px avatar, name, university, city only). Clicking a tile opens an Apple-style detail sheet modal with full info (programme, intake, flight line, degree/country tags) and Email + Phone (copy) action buttons. Modal is a bottom sheet on mobile ≤480px (slide-up animation, drag handle, safe-area inset); centred dialog on desktop. Closes on backdrop click, × button, or Escape key
-- Boarding pass: real profile data + flight details (departure, arrival, date, airline)
-- Flight details form: students enter their flight info; "Same flight day" badge on peer cards
+- Peer cards are compact portrait tiles (88px avatar, name, university, city only). Clicking a tile opens an Apple-style detail sheet modal with full info (programme, intake, flight line, degree/country tags) and Email + Phone action buttons (phone opens a `tel:` call link). Modal is a bottom sheet on mobile ≤480px (slide-up animation, drag handle, safe-area inset); centred dialog on desktop. Closes on backdrop click, × button, or Escape key
+- Boarding pass: real profile data (round profile-photo avatar) + flight details (departure, arrival, date, airline). When flight details exist, an animated "BOARDS IN N DAYS" countdown pill is shown on the stub (recomputed from `travel_date` on every load; "Boarding today" on the day; hidden once past)
+- Flight details form: students enter their flight info. Peer cards show a **"Same flight!"** badge when travel date + departure + arrival + airline all match the viewer, **"Same day"** when only the date matches
 - Phone sharing toggle on dashboard; phone masked in peer query unless `share_phone = true`
 - Admin-managed dropdown options: universities, airports, airlines, cities — full CRUD via `/api/admin/options/*`. (The `courses` table and its `/api/admin/options/.../courses` routes still exist but are unused — course is now a free-text field on registration, so the admin per-university course-management UI was removed.)
 - Student-facing dropdown APIs: `/api/options/universities`, `/api/options/airports`, `/api/options/airlines`, `/api/options/cities`

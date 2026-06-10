@@ -3,21 +3,13 @@
 import { useRouter } from "next/navigation";
 import AppLogo from "./AppLogo";
 
-interface NavbarProps {
-  name?: string;
-  university?: string;
-}
-
-export default function Navbar({ name, university }: NavbarProps) {
+export default function Navbar() {
   const router = useRouter();
 
   const signOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
   };
-  const initials = name
-    ? name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()
-    : "…";
 
   return (
     <nav style={{
@@ -40,20 +32,6 @@ export default function Navbar({ name, university }: NavbarProps) {
             </svg>
             Verified
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center",
-              fontFamily: "var(--font-display)", fontWeight: 700, color: "#fff", fontSize: ".86rem",
-              background: "linear-gradient(135deg,var(--coral),var(--coral-deep))",
-              boxShadow: "var(--shadow)",
-            }}>
-              {initials}
-            </div>
-            <div className="hide-mobile">
-              <div style={{ fontWeight: 700, fontSize: ".9rem", lineHeight: 1.1 }}>{name ?? "Loading…"}</div>
-              <div style={{ fontSize: ".72rem", color: "var(--ink-soft)" }}>{university ?? ""}</div>
-            </div>
-          </div>
           <button
             onClick={signOut}
             title="Sign out"

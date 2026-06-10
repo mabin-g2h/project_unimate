@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { useRegistration } from './context';
 import AppLogo from '@/app/components/AppLogo';
 
@@ -114,6 +116,9 @@ export default function RegisterPage() {
     for (const [k, v] of Object.entries(form)) {
       if (!v.trim()) { setError(`Please fill in all fields (missing: ${k.replace(/_/g,' ')})`); return; }
     }
+    if (!isValidPhoneNumber(form.phone)) {
+      setError('Please enter a valid mobile number (with country code).'); return;
+    }
     if (!passportFile) { setError('Please upload your passport (PDF).'); return; }
     if (!admissionFile) { setError('Please upload your admission letter (PDF).'); return; }
     if (!profileFile) { setError('Please upload a profile photo.'); return; }
@@ -159,7 +164,14 @@ export default function RegisterPage() {
               <input style={inp} value={form.full_name} onChange={e => set('full_name', e.target.value)} placeholder="e.g. Ishita Raman" required />
             </Field>
             <Field label="Phone number with country code" required>
-              <input style={inp} value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="e.g. +91 98765 43210" required />
+              <PhoneInput
+                international
+                defaultCountry="IN"
+                value={form.phone || undefined}
+                onChange={v => set('phone', v ?? '')}
+                className="unimate-phone"
+                placeholder="98765 43210"
+              />
             </Field>
             <Field label="Country of origin" required>
               <select style={inp} value={form.country_of_origin} onChange={e => set('country_of_origin', e.target.value)} required>

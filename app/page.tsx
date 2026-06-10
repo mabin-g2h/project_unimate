@@ -147,10 +147,7 @@ export default function Home() {
 
   return (
     <>
-      <Navbar
-        name={myProfile?.full_name}
-        university={myProfile?.university_name}
-      />
+      <Navbar />
 
       <header style={{ padding: "34px 0 8px" }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
@@ -171,6 +168,7 @@ export default function Home() {
           {myProfile && (
             <BoardingPass
               name={myProfile.full_name}
+              profilePictureUrl={myProfile.profile_picture_url}
               university={myProfile.university_name}
               course={myProfile.course_name}
               degreeLevel={myProfile.degree_level}
@@ -230,6 +228,7 @@ export default function Home() {
         myTravelDate={myProfile?.travel_date ?? null}
         myDepartureFrom={myProfile?.departure_from ?? null}
         myArrival={myProfile?.arrival ?? null}
+        myAirline={myProfile?.airline ?? null}
         myCountry={myProfile?.country_of_education ?? ""}
         onToast={showToast}
       />
