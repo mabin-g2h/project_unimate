@@ -35,7 +35,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   /login/page.tsx                        # Combined login + signup toggle
   /register/layout.tsx                   # 'use client' layout — provides RegistrationContext for /register and /register/consent
   /register/context.tsx                  # RegistrationContext + RegistrationProvider; holds form fields + File objects in memory across page navigation
-  /register/page.tsx                     # Student registration form (10 fields incl. city + 3 file uploads); on submit saves to context and navigates to /register/consent
+  /register/page.tsx                     # Student registration form (10 fields incl. city + 3 file uploads; course/programme is a free-text input — students type it from their admission letter); on submit saves to context and navigates to /register/consent
   /register/consent/page.tsx             # Consent page: application summary + 4 required checkboxes; POSTs to /api/student/register on accept
   /admin/page.tsx                        # Admin review portal (3 tabs: Student Applications, Manage Dropdowns incl. cities, Manage Admins)
   /accept-invite/page.tsx                # Admin invite acceptance — set password to activate admin account
@@ -151,7 +151,7 @@ BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add 
 
 ## Known Gaps (not MVP-blocking for auth/admin flows)
 
-- **No server-side field validation** in `/api/student/register` — fields are inserted as-is. Add presence/length checks before the SQL insert.
+- **Server-side field validation** in `/api/student/register` checks all required fields are present (returns 400 if blank); `course_name` is trimmed + whitespace-collapsed on save. No max-length enforcement yet beyond the `VARCHAR(255)` column.
 - **`student_profiles.city` is nullable and backfill-only-on-reapply** — profiles approved before the city feature have `city = NULL` and won't surface in anyone's "My city" scope until re-registered. There is no profile-edit flow to set it retroactively.
 
 ## Phase 1 Scope — What Exists
@@ -168,7 +168,7 @@ BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add 
 - Boarding pass: real profile data + flight details (departure, arrival, date, airline)
 - Flight details form: students enter their flight info; "Same flight day" badge on peer cards
 - Phone sharing toggle on dashboard; phone masked in peer query unless `share_phone = true`
-- Admin-managed dropdown options: universities (with nested courses), airports, airlines, cities — full CRUD via `/api/admin/options/*`
+- Admin-managed dropdown options: universities, airports, airlines, cities — full CRUD via `/api/admin/options/*`. (The `courses` table and its `/api/admin/options/.../courses` routes still exist but are unused — course is now a free-text field on registration, so the admin per-university course-management UI was removed.)
 - Student-facing dropdown APIs: `/api/options/universities`, `/api/options/airports`, `/api/options/airlines`, `/api/options/cities`
 - Consent flow: after filling the registration form students are taken to `/register/consent` where they must accept 4 required consent declarations (document storage, profile picture, email sharing, phone collection) before submission; `consented_at` timestamp recorded in DB
 - Admin invite-by-email: admins can invite new admins via the "Manage Admins" tab; invite link (48-hour expiry) sent by email; recipient sets password at `/accept-invite`; admin accounts skip email verification; admins can also revoke pending invites and demote existing admins

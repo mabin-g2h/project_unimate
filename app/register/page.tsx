@@ -10,8 +10,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
 const YEARS = [2024, 2025, 2026, 2027];
 
-interface Course { id: number; name: string; }
-interface University { id: number; name: string; courses: Course[]; }
+interface University { id: number; name: string; }
 interface City { id: number; label: string; }
 
 interface FormState {
@@ -60,7 +59,6 @@ export default function RegisterPage() {
   const [profilePreview, setProfilePreview] = useState<string | null>(null);
 
   const [universities, setUniversities] = useState<University[]>([]);
-  const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
   const [cities, setCities] = useState<City[]>([]);
 
   const passportRef = useRef<HTMLInputElement>(null);
@@ -90,28 +88,15 @@ export default function RegisterPage() {
     fetch('/api/options/universities')
       .then(r => r.json())
       .then(({ universities: list }) => {
-        const unis: University[] = list ?? [];
-        setUniversities(unis);
-        // Restore available courses if returning from the consent page
-        if (registrationData?.form.university_name) {
-          const uni = unis.find(u => u.name === registrationData.form.university_name);
-          setAvailableCourses(uni?.courses ?? []);
-        }
+        setUniversities(list ?? []);
       });
     fetch('/api/options/cities')
       .then(r => r.json())
       .then(({ cities: list }) => setCities(list ?? []));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   function set(field: keyof FormState, value: string) {
     setForm(f => ({ ...f, [field]: value }));
-  }
-
-  function handleUniversityChange(name: string) {
-    set('university_name', name);
-    set('course_name', '');
-    const uni = universities.find(u => u.name === name);
-    setAvailableCourses(uni?.courses ?? []);
   }
 
   async function handleProfileFile(file: File) {
@@ -193,7 +178,7 @@ export default function RegisterPage() {
               </select>
             </Field>
             <Field label="University / institution name" required>
-              <select style={inp} value={form.university_name} onChange={e => handleUniversityChange(e.target.value)} required>
+              <select style={inp} value={form.university_name} onChange={e => set('university_name', e.target.value)} required>
                 <option value="">Select university</option>
                 {universities.length === 0 && (
                   <option disabled value="">No universities configured — contact admin</option>
@@ -209,24 +194,16 @@ export default function RegisterPage() {
             </Field>
             <Field label="Course / programme name" required>
               <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
-                If your course is not listed, select <strong>Not sure</strong> — an admin will assign the correct course during review.
+                Enter the exact programme name as written on your admission letter.
               </p>
-              <select
-                style={{ ...inp, opacity: !form.university_name ? 0.5 : 1 }}
+              <input
+                type="text"
+                style={inp}
                 value={form.course_name}
                 onChange={e => set('course_name', e.target.value)}
-                disabled={!form.university_name}
+                placeholder="e.g. Master of Information Technology"
                 required
-              >
-                <option value="">
-                  {form.university_name ? 'Select course' : 'Select a university first'}
-                </option>
-                {availableCourses.length === 0 && form.university_name && (
-                  <option disabled value="">No courses configured for this university</option>
-                )}
-                {availableCourses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                {form.university_name && <option value="Not sure">Not sure</option>}
-              </select>
+              />
             </Field>
             <div className="two-col-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <Field label="Intake month" required>
