@@ -48,7 +48,7 @@ function Content() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div className="screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{
         maxWidth: 420, width: '100%', background: 'var(--paper)', borderRadius: 'var(--radius)',
         boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line-soft)', padding: '40px 36px', textAlign: 'center',

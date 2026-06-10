@@ -143,8 +143,8 @@ export default function BoardingPass({
               title="Edit flight details"
               aria-label="Edit flight details"
               style={{
-                position: "absolute", top: 12, right: 12, zIndex: 2,
-                width: 26, height: 26, borderRadius: "50%", padding: 0,
+                position: "absolute", top: 6, right: 6, zIndex: 2,
+                width: 36, height: 36, borderRadius: "50%", padding: 0,
                 background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.3)",
                 color: "#fff", cursor: "pointer", display: "grid", placeItems: "center",
                 transition: "background .15s",

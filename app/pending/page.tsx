@@ -96,7 +96,7 @@ export default function PendingPage() {
 }
 
 function Screen({ children }: { children: React.ReactNode }) {
-  return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>{children}</div>;
+  return <div className="screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>{children}</div>;
 }
 
 function Spinner() {

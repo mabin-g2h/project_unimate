@@ -95,7 +95,7 @@ export default function Home() {
 
 
   if (!ready) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="screen" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 36, height: 36, border: "3px solid var(--line)", borderTopColor: "var(--teal)", borderRadius: "50%", animation: "spin .8s linear infinite" }}>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>

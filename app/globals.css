@@ -31,7 +31,11 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* Full-height centering wrapper — 100dvh avoids iOS Safari toolbar clipping;
+   the 100vh line above it is the fallback for browsers without dvh support. */
+.screen { min-height: 100vh; min-height: 100dvh; }
 
 body {
   font-family: var(--font-body);
@@ -43,6 +47,16 @@ body {
 }
 
 ::selection { background: var(--teal); color: #fff; }
+
+/* Android / touch: remove grey tap-flash and 300 ms click delay */
+button, a, label, [role="button"] { -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"] { touch-action: manipulation; }
+
+/* iOS Safari zooms when a focused field's font is < 16px. Force 16px on phones
+   so focusing any input/select/textarea never triggers an auto-zoom. */
+@media (max-width: 480px) {
+  input, select, textarea { font-size: 16px !important; }
+}
 
 @keyframes rise {
   to { opacity: 1; transform: none; }
@@ -90,10 +104,6 @@ body {
 /* Admin table: allow horizontal scroll on narrow screens */
 .admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* Flight modal: reduce padding on mobile */
-@media (max-width: 480px) {
-  .modal-inner { padding: 24px 18px !important; }
-}
 
 /* Two-column intake grid: stack on mobile */
 @media (max-width: 480px) {
