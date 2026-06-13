@@ -61,7 +61,7 @@ export async function POST(
         AND sp.status = 'approved'
         AND sp.user_id != ${profile.user_id}
     `;
-    Promise.allSettled(
+    await Promise.allSettled(
       peers.map(p => sendNewPeerNotificationEmail(p.email, profile.full_name, profile.university_name))
     );
   } else {
