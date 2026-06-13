@@ -18,6 +18,9 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/admin') && payload.role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url));
     }
+    if (pathname.startsWith('/register') && !payload['emailVerified']) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
     return NextResponse.next();
   } catch {
     return NextResponse.redirect(new URL('/login', request.url));

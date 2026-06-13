@@ -45,10 +45,11 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   /forgot-password/page.tsx              # Request a password-reset link by email
   /reset-password/page.tsx               # Set a new password from a reset-link token
   /api/
-    /auth/signup/route.ts                # POST — create account, hash password, send verification email; purges all expired+unverified rows before duplicate check; 2-hour expiry window
+    /auth/signup/route.ts                # POST — create account, hash password, send verification email; purges all expired+unverified rows before duplicate check; 12-hour expiry window
     /auth/login/route.ts                 # POST — authenticate, set auth-token cookie
     /auth/logout/route.ts                # POST — clear cookie
-    /auth/me/route.ts                    # GET  — return current session user + registration status
+    /auth/me/route.ts                    # GET  — return current session user + registration status + email_verified flag
+    /auth/cleanup/route.ts               # GET  — Vercel cron endpoint (Bearer CRON_SECRET); deletes all expired unverified user rows; runs daily at midnight UTC
     /auth/verify-email/route.ts          # GET  — validate token; deletes user row if expired, then redirects; sets session and redirects on success
     /auth/accept-invite/route.ts         # POST — validate invite token, create admin user (email_verified=true, role='admin'), set session cookie; deletes invite row on success
     /auth/forgot-password/route.ts       # POST — issue uuid reset token (1-hour expiry) for verified users, email it (fire-and-forget); always returns 200 to prevent email enumeration
@@ -94,7 +95,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   db.ts      # export const sql = neon(process.env.DATABASE_CONNECTION_STRING!)
   auth.ts    # signToken, verifyToken, getSession, makeSessionCookieOptions; SessionPayload interface
   email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail, sendAdminInviteEmail, sendPasswordResetEmail
-/middleware.ts                           # JWT protection — public allowlist + /admin role guard
+/middleware.ts                           # JWT protection — public allowlist + /admin role guard + /register emailVerified guard
 /private_uploads/                        # Local dev placeholder only — production files live in Vercel Blob
 ```
 
@@ -123,6 +124,7 @@ Tables: `users` (includes `password_reset_token VARCHAR(255)`, `password_reset_e
 ```
 Public (no auth):  /login, /verify-email, /accept-invite, /forgot-password, /reset-password, /api/auth/*
 Admin only:        /admin/* → role must be 'admin', else redirect /
+Register gate:     /register/* → JWT must have emailVerified=true, else redirect /login
 Protected:         all other routes → valid auth-token cookie required, else redirect /login
 ```
 
@@ -159,7 +161,7 @@ CRON_SECRET                  # Secret for /api/auth/cleanup cron endpoint — se
 
 ## Phase 1 Scope — What Exists
 
-- Signup → email verification (2-hour expiry; expired rows auto-deleted) → login/logout (with sign-out button in Navbar)
+- Signup → email verification (12-hour expiry; expired rows auto-deleted by cron + inline on next signup) → login/logout (with sign-out button in Navbar)
 - Forgot/reset password: `/forgot-password` requests a reset link (uuid token, 1-hour expiry, stored on `users.password_reset_token/expires`); `/reset-password` validates the token and sets a new bcrypt-hashed password. Forgot-password always returns 200 to prevent email enumeration; only verified accounts receive a link
 - Student registration form with passport, admission letter, and profile photo upload (photo resized client-side to max 400 px before upload)
 - Admin review queue (approve / reject with reason + file deletion)
@@ -176,6 +178,7 @@ CRON_SECRET                  # Secret for /api/auth/cleanup cron endpoint — se
 - Consent flow: after filling the registration form students are taken to `/register/consent` where they must accept 4 required consent declarations (document storage, profile picture, email sharing, phone collection) before submission; `consented_at` timestamp recorded in DB
 - Admin invite-by-email: admins can invite new admins via the "Manage Admins" tab; invite link (48-hour expiry) sent by email; recipient sets password at `/accept-invite`; admin accounts skip email verification; admins can also revoke pending invites and demote existing admins
 - Deployed to Vercel; email links use `APP_URL` env var
+- `/register` explicitly gated on `emailVerified=true` in both middleware (server-side JWT claim check) and page `useEffect` (client-side fallback via `email_verified` from `/api/auth/me`)
 
 ## Out of Scope (Do Not Build)
 

@@ -70,6 +70,7 @@ export default function RegisterPage() {
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(({ user }) => {
       if (!user) { router.replace('/login'); return; }
+      if (!user.email_verified) { router.replace('/login'); return; }
       if (user.registration_status === 'approved') { router.replace('/'); return; }
       if (user.registration_status === 'pending') { router.replace('/pending'); return; }
       // Restore form state if returning from the consent page

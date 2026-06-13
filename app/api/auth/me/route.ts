@@ -7,7 +7,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ user: null }, { status: 401 });
 
   const [user] = await sql`
-    SELECT u.id, u.email, u.role,
+    SELECT u.id, u.email, u.role, u.email_verified,
            sp.id        AS profile_id,
            sp.status    AS registration_status,
            sp.full_name,
