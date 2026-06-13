@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import { sendRegistrationAcknowledgement } from '@/lib/email';
+import { sendRegistrationAcknowledgement, sendAdminRegistrationNotification } from '@/lib/email';
 import { put } from '@vercel/blob';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
@@ -85,6 +85,11 @@ export async function POST(request: NextRequest) {
   `;
 
   await sendRegistrationAcknowledgement(session.email, fullName);
+
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (adminEmail) {
+    sendAdminRegistrationNotification(adminEmail, fullName, session.email).catch(() => {});
+  }
 
   return NextResponse.json({ message: 'Registration submitted successfully.' });
 }

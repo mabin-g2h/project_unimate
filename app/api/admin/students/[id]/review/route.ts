@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import { sendApprovalEmail, sendRejectionEmail } from '@/lib/email';
+import { sendApprovalEmail, sendRejectionEmail, sendNewPeerNotificationEmail } from '@/lib/email';
 import { del } from '@vercel/blob';
 
 export const runtime = 'nodejs';
@@ -52,6 +52,18 @@ export async function POST(
 
   if (action === 'approve') {
     await sendApprovalEmail(profile.email, profile.full_name);
+
+    const peers = await sql`
+      SELECT u.email
+      FROM student_profiles sp
+      JOIN users u ON u.id = sp.user_id
+      WHERE sp.university_name = ${profile.university_name}
+        AND sp.status = 'approved'
+        AND sp.user_id != ${profile.user_id}
+    `;
+    Promise.allSettled(
+      peers.map(p => sendNewPeerNotificationEmail(p.email, profile.full_name, profile.university_name))
+    );
   } else {
     await sendRejectionEmail(profile.email, profile.full_name, rejection_reason);
   }

@@ -70,6 +70,31 @@ export async function sendRegistrationAcknowledgement(to: string, name: string) 
   });
 }
 
+export async function sendAdminRegistrationNotification(adminEmail: string, studentName: string, studentEmail: string) {
+  const adminPortalUrl = `${process.env.APP_URL}/admin`;
+  await transporter.sendMail({
+    from: `"UniMate" <${process.env.GMAIL_USER}>`,
+    to: adminEmail,
+    subject: 'New student application — UniMate',
+    html: wrap(`
+      <h2 style="color:#1D1D1F;font-size:22px;font-weight:800;margin:0 0 12px;">New application awaiting review</h2>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.6;margin:0 0 20px;">
+        A new student has submitted their registration and is awaiting your approval.
+      </p>
+      <div style="background:#E8ECFA;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <p style="color:#0635A0;font-weight:700;font-size:14px;margin:0 0 8px;">Applicant details</p>
+        <p style="color:#0635A0;font-size:14px;margin:0;line-height:1.8;">
+          <strong>Name:</strong> ${studentName}<br/>
+          <strong>Email:</strong> ${studentEmail}
+        </p>
+      </div>
+      <a href="${adminPortalUrl}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
+        Review in admin portal
+      </a>
+    `),
+  });
+}
+
 export async function sendApprovalEmail(to: string, name: string) {
   const url = `${process.env.APP_URL}/login`;
   await transporter.sendMail({
@@ -122,6 +147,24 @@ export async function sendPasswordResetEmail(to: string, token: string) {
         Reset Password
       </a>
       <p style="color:#8E8E93;font-size:13px;margin:16px 0 0;">This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email — your password won't change.</p>
+    `),
+  });
+}
+
+export async function sendNewPeerNotificationEmail(to: string, newStudentName: string, universityName: string) {
+  const url = `${process.env.APP_URL}/`;
+  await transporter.sendMail({
+    from: `"UniMate" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: `New UniMate peer at ${universityName} — UniMate`,
+    html: wrap(`
+      <h2 style="color:#1D1D1F;font-size:22px;font-weight:800;margin:0 0 12px;">You have a new UniMate peer!</h2>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.6;margin:0 0 28px;">
+        <strong>${newStudentName.split(' ')[0]}</strong> has just joined UniMate from <strong>${universityName}</strong>. Log in to connect with them.
+      </p>
+      <a href="${url}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-bottom:24px;">
+        View FlyMate Dashboard
+      </a>
     `),
   });
 }
