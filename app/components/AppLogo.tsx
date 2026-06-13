@@ -11,7 +11,6 @@ export default function AppLogo({ height = 36 }: Props) {
       alt="uniMate"
       height={height}
       width={Math.round(height * 2.04)}
-      unoptimized
       priority
     />
   );
