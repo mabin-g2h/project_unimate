@@ -42,7 +42,7 @@ export async function sendVerificationEmail(to: string, token: string) {
       <a href="${url}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-bottom:24px;">
         Verify Email Address
       </a>
-      <p style="color:#8E8E93;font-size:13px;margin:16px 0 0;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
+      <p style="color:#8E8E93;font-size:13px;margin:16px 0 0;">This link expires in 12 hours. If you didn't create an account, ignore this email.</p>
     `),
   });
 }

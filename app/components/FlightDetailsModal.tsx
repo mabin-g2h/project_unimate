@@ -37,6 +37,12 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
     });
   }, []);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   const set = (k: keyof FlightDetails, v: string) =>
     setForm(f => ({ ...f, [k]: v }));
 
@@ -70,98 +76,130 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
   };
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-      }}
-      onClick={onClose}
-    >
+    <>
+      <style>{`
+        @keyframes fd-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fd-fade-in  { from { opacity: 0; }                  to { opacity: 1; }              }
+        .fd-outer { display:flex; align-items:center; justify-content:center; padding:20px; }
+        .fd-sheet { border-radius:var(--radius); animation: fd-fade-in .2s ease; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; }
+        .fd-drag  { display:none; }
+        .fd-inner { padding: 32px 28px; position: relative; }
+        @media (max-width: 480px) {
+          .fd-outer { align-items:flex-end !important; padding:0 !important; }
+          .fd-sheet { border-radius:22px 22px 0 0 !important; max-height:92vh !important; animation: fd-slide-up .32s cubic-bezier(0.32,0.72,0,1); }
+          .fd-drag  { display:flex; justify-content:center; padding:10px 0 4px; }
+          .fd-inner { padding: 20px 20px max(24px, env(safe-area-inset-bottom)) !important; }
+          .fd-inner input, .fd-inner select { font-size: 1rem !important; }
+        }
+      `}</style>
+
+      {/* Backdrop */}
       <div
-        className="modal-inner"
+        onClick={onClose}
         style={{
-          background: "var(--paper)", borderRadius: "var(--radius)",
-          padding: "32px 28px", width: "100%", maxWidth: 460,
-          boxShadow: "var(--shadow-lg)", position: "relative",
-          maxHeight: "90vh", overflowY: "auto",
+          position: "fixed", inset: 0, zIndex: 100,
+          background: "rgba(0,0,0,.45)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
         }}
-        onClick={e => e.stopPropagation()}
+      />
+
+      {/* Sheet wrapper */}
+      <div
+        onClick={onClose}
+        className="fd-outer"
+        style={{ position: "fixed", inset: 0, zIndex: 101 }}
       >
-        <button
-          onClick={onClose}
+        <div
+          onClick={e => e.stopPropagation()}
+          className="fd-sheet"
           style={{
-            position: "absolute", top: 14, right: 14,
-            border: "none", background: "var(--cream-2)", borderRadius: 8,
-            padding: "10px 12px", cursor: "pointer", color: "var(--ink-soft)",
-            fontWeight: 700, fontSize: ".9rem", lineHeight: 1,
-            minWidth: 44, minHeight: 44, display: "grid", placeItems: "center",
+            background: "var(--paper)", width: "100%", maxWidth: 460,
+            boxShadow: "var(--shadow-lg)",
           }}
         >
-          ✕
-        </button>
+          {/* Drag handle — mobile only */}
+          <div className="fd-drag">
+            <div style={{ width: 36, height: 4, borderRadius: 999, background: "rgba(0,0,0,0.15)" }} />
+          </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
-          <AppLogo height={32} />
-          <h2 style={{
-            fontFamily: "var(--font-display)", fontWeight: 800,
-            fontSize: "1.25rem", letterSpacing: "-.02em",
-          }}>
-            {current ? "Update" : "Add"} flight details
-          </h2>
-        </div>
+          <div className="fd-inner">
+            <button
+              onClick={onClose}
+              style={{
+                position: "absolute", top: 14, right: 14,
+                border: "none", background: "var(--cream-2)", borderRadius: 8,
+                padding: "10px 12px", cursor: "pointer", color: "var(--ink-soft)",
+                fontWeight: 700, fontSize: ".9rem", lineHeight: 1,
+                minWidth: 44, minHeight: 44, display: "grid", placeItems: "center",
+              }}
+            >
+              ✕
+            </button>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Field label="Departure city / airport">
-            <select value={form.departure_from} onChange={e => set("departure_from", e.target.value)} style={selectCss}>
-              <option value="">Select departure</option>
-              {airports.length === 0 && <option disabled value="">No airports configured</option>}
-              {airports.map(a => <option key={a.id} value={a.label}>{a.label}</option>)}
-            </select>
-          </Field>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
+              <AppLogo height={32} />
+              <h2 style={{
+                fontFamily: "var(--font-display)", fontWeight: 800,
+                fontSize: "1.25rem", letterSpacing: "-.02em",
+              }}>
+                {current ? "Update" : "Add"} flight details
+              </h2>
+            </div>
 
-          <Field label="Arrival city / airport">
-            <select value={form.arrival} onChange={e => set("arrival", e.target.value)} style={selectCss}>
-              <option value="">Select arrival</option>
-              {airports.length === 0 && <option disabled value="">No airports configured</option>}
-              {airports.map(a => <option key={a.id} value={a.label}>{a.label}</option>)}
-            </select>
-          </Field>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <Field label="Departure city / airport">
+                <select value={form.departure_from} onChange={e => set("departure_from", e.target.value)} style={selectCss}>
+                  <option value="">Select departure</option>
+                  {airports.length === 0 && <option disabled value="">No airports configured</option>}
+                  {airports.map(a => <option key={a.id} value={a.label}>{a.label}</option>)}
+                </select>
+              </Field>
 
-          <Field label="Travel date">
-            <input
-              type="date"
-              value={form.travel_date}
-              onChange={e => set("travel_date", e.target.value)}
-              style={inputCss}
-            />
-          </Field>
+              <Field label="Arrival city / airport">
+                <select value={form.arrival} onChange={e => set("arrival", e.target.value)} style={selectCss}>
+                  <option value="">Select arrival</option>
+                  {airports.length === 0 && <option disabled value="">No airports configured</option>}
+                  {airports.map(a => <option key={a.id} value={a.label}>{a.label}</option>)}
+                </select>
+              </Field>
 
-          <Field label="Airline">
-            <select value={form.airline} onChange={e => set("airline", e.target.value)} style={selectCss}>
-              <option value="">Select airline</option>
-              {airlines.length === 0 && <option disabled value="">No airlines configured</option>}
-              {airlines.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
-            </select>
-          </Field>
+              <Field label="Travel date">
+                <input
+                  type="date"
+                  value={form.travel_date}
+                  onChange={e => set("travel_date", e.target.value)}
+                  style={inputCss}
+                />
+              </Field>
 
-          <button
-            onClick={save}
-            disabled={saving || !valid}
-            style={{
-              marginTop: 6, padding: "14px", borderRadius: 12, border: "none",
-              background: "var(--teal)", color: "#fff",
-              fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "1rem",
-              cursor: saving || !valid ? "not-allowed" : "pointer",
-              opacity: !valid ? .5 : 1, transition: ".18s",
-              boxShadow: valid ? "0 8px 18px -6px rgba(9,66,189,0.35)" : "none",
-            }}
-          >
-            {saving ? "Saving…" : "Save flight details"}
-          </button>
+              <Field label="Airline">
+                <select value={form.airline} onChange={e => set("airline", e.target.value)} style={selectCss}>
+                  <option value="">Select airline</option>
+                  {airlines.length === 0 && <option disabled value="">No airlines configured</option>}
+                  {airlines.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+                </select>
+              </Field>
+
+              <button
+                onClick={save}
+                disabled={saving || !valid}
+                style={{
+                  marginTop: 6, padding: "14px", borderRadius: 12, border: "none",
+                  background: "var(--teal)", color: "#fff", width: "100%",
+                  fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "1rem",
+                  cursor: saving || !valid ? "not-allowed" : "pointer",
+                  opacity: !valid ? .5 : 1, transition: ".18s",
+                  boxShadow: valid ? "0 8px 18px -6px rgba(9,66,189,0.35)" : "none",
+                }}
+              >
+                {saving ? "Saving…" : "Save flight details"}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -141,6 +141,7 @@ GMAIL_APP_PASSWORD           # Gmail app password (not account password)
 APP_URL                      # Base URL used in email links (e.g. http://localhost:3000)
 ADMIN_EMAIL                  # Email auto-assigned role='admin' at signup
 BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add to .env.local for dev)
+CRON_SECRET                  # Secret for /api/auth/cleanup cron endpoint — set in Vercel project settings + .env.local
 ```
 
 ## Conventions

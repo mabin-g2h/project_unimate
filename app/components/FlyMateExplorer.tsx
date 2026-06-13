@@ -56,21 +56,6 @@ const services = [
     ),
     bg: "var(--teal-tint)", color: "var(--teal)"
   },
-  {
-    key: "Document Wallet",
-    tag: "Secure",
-    msg: "Your secure wallet keeps your CoE, visa & tickets encrypted in one place.",
-    title: "Document Wallet",
-    desc: "Store CoE, visa, tickets — encrypted.",
-    cta: "Open wallet",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <path d="M16 12h.01" /><path d="M3 9h18" />
-      </svg>
-    ),
-    bg: "var(--teal-tint)", color: "var(--teal)"
-  },
 ];
 
 const ArrowRight = () => (

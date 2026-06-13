@@ -39,12 +39,13 @@ interface BoardingPassProps {
   onAddFlight: () => void;
   sharePhone: boolean;
   onTogglePhone: () => void;
+  phone?: string | null;
 }
 
 export default function BoardingPass({
   name, profilePictureUrl, university, course, degreeLevel,
   intakeMonth, intakeYear, city, flightDetails, onAddFlight,
-  sharePhone, onTogglePhone,
+  sharePhone, onTogglePhone, phone,
 }: BoardingPassProps) {
   const days = flightDetails ? daysToFly(flightDetails.travel_date) : null;
   return (
@@ -102,29 +103,49 @@ export default function BoardingPass({
           ))}
         </div>
 
-        <button
-          onClick={onTogglePhone}
-          style={{
-            marginTop: 16, display: "inline-flex", alignItems: "center", gap: 9,
-            background: "none", border: "none", padding: "8px 0", cursor: "pointer",
-            fontFamily: "var(--font-body)",
-          }}
-        >
-          <span style={{
-            width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
-            background: sharePhone ? "#22c55e" : "#ef4444",
-            boxShadow: sharePhone
-              ? "0 0 0 3px rgba(34,197,94,.25)"
-              : "0 0 0 3px rgba(239,68,68,.22)",
-            display: "inline-block", transition: "background .2s, box-shadow .2s",
-          }} />
-          <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink-soft)" }}>
-            Share my number
-          </span>
-          <span style={{ fontSize: ".78rem", color: sharePhone ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
-            {sharePhone ? "On" : "Off"}
-          </span>
-        </button>
+        <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <button
+            onClick={onTogglePhone}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 9,
+              background: "none", border: "none", padding: "8px 0", cursor: "pointer",
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            <span style={{
+              width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
+              background: sharePhone ? "#22c55e" : "#ef4444",
+              boxShadow: sharePhone
+                ? "0 0 0 3px rgba(34,197,94,.25)"
+                : "0 0 0 3px rgba(239,68,68,.22)",
+              display: "inline-block", transition: "background .2s, box-shadow .2s",
+            }} />
+            <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink-soft)" }}>
+              Share my number
+            </span>
+            <span style={{ fontSize: ".78rem", color: sharePhone ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
+              {sharePhone ? "On" : "Off"}
+            </span>
+          </button>
+
+          {sharePhone && phone && (
+            <span
+              title="Visible to your FlyMates"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                paddingLeft: 12, borderLeft: "1px solid var(--line)",
+                color: "var(--ink-faint)", opacity: .85,
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
+              </svg>
+              <span style={{ fontWeight: 600, fontSize: ".84rem", fontVariantNumeric: "tabular-nums", letterSpacing: ".01em" }}>
+                {phone}
+              </span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Stub */}
@@ -143,8 +164,8 @@ export default function BoardingPass({
               title="Edit flight details"
               aria-label="Edit flight details"
               style={{
-                position: "absolute", top: 12, right: 12, zIndex: 2,
-                width: 26, height: 26, borderRadius: "50%", padding: 0,
+                position: "absolute", top: 6, right: 6, zIndex: 2,
+                width: 36, height: 36, borderRadius: "50%", padding: 0,
                 background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.3)",
                 color: "#fff", cursor: "pointer", display: "grid", placeItems: "center",
                 transition: "background .15s",
