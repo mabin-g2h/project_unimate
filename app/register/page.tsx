@@ -253,7 +253,7 @@ export default function RegisterPage() {
           {/* Documents */}
           <Section title="Documents & Photo">
             <p style={{ color: 'var(--ink-soft)', fontSize: '.84rem', marginBottom: 18, lineHeight: 1.6 }}>
-              Passport and admission letter must be PDF. Profile photo must be JPEG or PNG. Max file size: 5MB per file. Documents are securely stored and deleted after verification.
+              Passport and admission letter must be PDF — max 2 MB each. Profile photo must be JPEG or PNG — max 1 MB. Documents are securely stored and deleted after verification.
             </p>
 
             <Field label="Passport copy (PDF)" required>

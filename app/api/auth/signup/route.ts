@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { v4 as uuid } from 'uuid';
+import { randomBytes } from 'crypto';
 import { sql } from '@/lib/db';
 import { sendVerificationEmail } from '@/lib/email';
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const verificationToken = uuid();
+    const verificationToken = randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 12 * 60 * 60 * 1000);
     const role = email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'admin' : 'student';
 

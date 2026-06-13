@@ -25,6 +25,15 @@ export async function POST(req: Request) {
     airline: string;
   };
 
+  if (!travel_date || !/^\d{4}-\d{2}-\d{2}$/.test(travel_date) || isNaN(Date.parse(travel_date))) {
+    return NextResponse.json({ error: 'Invalid travel date.' }, { status: 400 });
+  }
+  const d = new Date();
+  const todayStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  if (travel_date < todayStr) {
+    return NextResponse.json({ error: 'Travel date must be today or in the future.' }, { status: 400 });
+  }
+
   await sql`
     INSERT INTO flight_details (user_id, departure_from, arrival, travel_date, airline)
     VALUES (${session.userId}, ${departure_from}, ${arrival}, ${travel_date}, ${airline})

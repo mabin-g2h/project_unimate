@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuid } from 'uuid';
+import { randomBytes } from 'crypto';
 import { sql } from '@/lib/db';
 import { sendPasswordResetEmail } from '@/lib/email';
 
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     `;
 
     if (user && user.email_verified) {
-      const token = uuid();
+      const token = randomBytes(32).toString('hex');
       const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
       await sql`

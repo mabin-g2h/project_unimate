@@ -13,6 +13,10 @@ const transporter = nodemailer.createTransport({
 const BRAND = '#0942BD';
 const CORAL = '#EE5B36';
 
+function escapeHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function wrap(body: string) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#F5F5F7;font-family:'SF Pro Text',-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;">
@@ -182,7 +186,7 @@ export async function sendRejectionEmail(to: string, name: string, reason: strin
       </p>
       <div style="background:#FBE2D8;border-radius:12px;padding:20px;margin-bottom:24px;border-left:4px solid ${CORAL};">
         <p style="color:#C9421F;font-weight:700;font-size:14px;margin:0 0 8px;">Reason for rejection</p>
-        <p style="color:#C9421F;font-size:14px;margin:0;">${reason}</p>
+        <p style="color:#C9421F;font-size:14px;margin:0;">${escapeHtml(reason)}</p>
       </div>
       <p style="color:#6E6E73;font-size:14px;line-height:1.6;margin:0 0 20px;">
         If you'd like to re-apply with updated documents, you can log in and submit a new application.

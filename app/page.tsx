@@ -201,24 +201,12 @@ export default function Home() {
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1 }}>{inIntakeCount}</div>
               <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>In your intake</div>
             </div>
-            <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              {sameFlightCount !== null ? (
-                <>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--coral-deep)" }}>{sameFlightCount}</div>
-                  <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Same flight</div>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--ink-faint)" }}>—</div>
-                  <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>
-                    <button onClick={() => setShowFlightModal(true)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--teal)", fontWeight: 700, fontSize: ".78rem", fontFamily: "var(--font-body)" }}>
-                      Add flight date
-                    </button>
-                    {" "}to see who&apos;s flying with you
-                  </div>
-                </>
-              )}
-            </div>
+            {sameFlightCount !== null && (
+              <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--coral-deep)" }}>{sameFlightCount}</div>
+                <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Same flight</div>
+              </div>
+            )}
           </div>
 
         </div>

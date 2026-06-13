@@ -21,6 +21,22 @@ export async function PATCH(
 
   const body = await request.json();
 
+  const VALID_DEGREES = ["Bachelor's Degree","Postgraduate Certificate","Postgraduate Diploma","Master's Degree","PhD / Doctorate","Professional Degree","Other"];
+  const VALID_MONTHS  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const VALID_GENDERS = ['Male','Female'];
+
+  if (body.degree_level && !VALID_DEGREES.includes(body.degree_level))
+    return NextResponse.json({ error: 'Invalid degree level.' }, { status: 400 });
+  if (body.intake_month && !VALID_MONTHS.includes(body.intake_month))
+    return NextResponse.json({ error: 'Invalid intake month.' }, { status: 400 });
+  if (body.gender && !VALID_GENDERS.includes(body.gender))
+    return NextResponse.json({ error: 'Invalid gender.' }, { status: 400 });
+  if (body.intake_year) {
+    const yr = parseInt(body.intake_year, 10);
+    if (isNaN(yr) || yr < 2024 || yr > 2035)
+      return NextResponse.json({ error: 'Intake year must be between 2024 and 2035.' }, { status: 400 });
+  }
+
   await sql`
     UPDATE student_profiles
     SET

@@ -1,7 +1,13 @@
+import { timingSafeEqual } from 'crypto';
 import { sql } from '@/lib/db';
 
 export async function GET(request: Request) {
-  if (request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  const incoming = request.headers.get('authorization')?.replace('Bearer ', '') ?? '';
+  const expected = process.env.CRON_SECRET ?? '';
+  const valid =
+    incoming.length === expected.length &&
+    timingSafeEqual(Buffer.from(incoming), Buffer.from(expected));
+  if (!valid) {
     return new Response('Unauthorized', { status: 401 });
   }
 

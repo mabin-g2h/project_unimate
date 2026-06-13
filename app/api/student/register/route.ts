@@ -44,9 +44,13 @@ export async function POST(request: NextRequest) {
   }
   const phoneE164 = parsedPhone.number;
 
-  async function saveFile(field: string, allowed: string[]): Promise<string | null> {
+  const PDF_MAX = 2 * 1024 * 1024; // 2 MB
+  const IMG_MAX = 1 * 1024 * 1024; // 1 MB
+
+  async function saveFile(field: string, allowed: string[], maxBytes: number): Promise<string | null> {
     const file = formData.get(field) as File | null;
     if (!file || file.size === 0) return null;
+    if (file.size > maxBytes) return null;
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     if (!allowed.includes(ext)) return null;
     const filename = `${session!.userId}_${field}_${Date.now()}.${ext}`;
@@ -54,9 +58,17 @@ export async function POST(request: NextRequest) {
     return url;
   }
 
-  const passportFile = await saveFile('passport', ['pdf']);
-  const admissionFile = await saveFile('admission_letter', ['pdf']);
-  const profileFile = await saveFile('profile_picture', ['jpg', 'jpeg', 'png']);
+  // Enforce size limits before uploading
+  const passportRaw  = formData.get('passport')        as File | null;
+  const admissionRaw = formData.get('admission_letter') as File | null;
+  const profileRaw   = formData.get('profile_picture')  as File | null;
+  if (passportRaw  && passportRaw.size  > PDF_MAX) return NextResponse.json({ error: 'Passport PDF must be 2 MB or smaller.' },        { status: 400 });
+  if (admissionRaw && admissionRaw.size > PDF_MAX) return NextResponse.json({ error: 'Admission letter PDF must be 2 MB or smaller.' }, { status: 400 });
+  if (profileRaw   && profileRaw.size   > IMG_MAX) return NextResponse.json({ error: 'Profile photo must be 1 MB or smaller.' },        { status: 400 });
+
+  const passportFile = await saveFile('passport',        ['pdf'],              PDF_MAX);
+  const admissionFile = await saveFile('admission_letter', ['pdf'],            PDF_MAX);
+  const profileFile  = await saveFile('profile_picture', ['jpg','jpeg','png'], IMG_MAX);
 
   const fullName = formData.get('full_name') as string;
 

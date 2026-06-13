@@ -168,6 +168,7 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
                 <input
                   type="date"
                   value={form.travel_date}
+                  min={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
                   onChange={e => set("travel_date", e.target.value)}
                   style={inputCss}
                 />
