@@ -54,9 +54,9 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
     /auth/accept-invite/route.ts         # POST — validate invite token, create admin user (email_verified=true, role='admin'), set session cookie; deletes invite row on success
     /auth/forgot-password/route.ts       # POST — issue uuid reset token (1-hour expiry) for verified users, email it (fire-and-forget); always returns 200 to prevent email enumeration
     /auth/reset-password/route.ts        # POST — validate reset token + expiry, bcrypt-hash new password (min 8 chars), clear token
-    /student/register/route.ts           # POST — FormData with files + consents_accepted flag; validates consent, inserts student_profiles row with consented_at = NOW()
+    /student/register/route.ts           # POST — FormData with files + consents_accepted flag; validates consent, inserts student_profiles row with consented_at = NOW(); fires admin notification email (fire-and-forget)
     /admin/students/route.ts                          # GET    — list all student applications (admin only)
-    /admin/students/[id]/review/route.ts              # POST   — approve/reject; deletes passport+admission letter from Blob; sends email
+    /admin/students/[id]/review/route.ts              # POST   — approve/reject; deletes passport+admission letter from Blob; sends approval/rejection email; on approve also notifies all other approved students at the same university (awaited via Promise.allSettled)
     /admin/students/[id]/profile/route.ts             # PATCH  — admin edit of a student's profile fields (name, phone, country, university, degree, course, intake, city)
     /admin/admins/route.ts                            # GET    — list admin users + pending invites; POST — send admin invite email (48-hour token)
     /admin/admins/[id]/route.ts                       # DELETE — demote admin to student (cannot remove self)
@@ -94,7 +94,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 /lib/
   db.ts      # export const sql = neon(process.env.DATABASE_CONNECTION_STRING!)
   auth.ts    # signToken, verifyToken, getSession, makeSessionCookieOptions; SessionPayload interface
-  email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendApprovalEmail, sendRejectionEmail, sendAdminInviteEmail, sendPasswordResetEmail
+  email.ts   # sendVerificationEmail, sendRegistrationAcknowledgement, sendAdminRegistrationNotification, sendApprovalEmail, sendRejectionEmail, sendAdminInviteEmail, sendPasswordResetEmail, sendNewPeerNotificationEmail
 /middleware.ts                           # JWT protection — public allowlist + /admin role guard + /register emailVerified guard
 /private_uploads/                        # Local dev placeholder only — production files live in Vercel Blob
 ```
@@ -149,7 +149,7 @@ CRON_SECRET                  # Secret for /api/auth/cleanup cron endpoint — se
 ## Conventions
 
 - Server components by default. Add `'use client'` only when using hooks or browser APIs.
-- Email sends are fire-and-forget — never block a response waiting for email confirmation.
+- Primary email sends (to the acting user) are awaited. Secondary notifications (admin alert on registration, peer alerts on approval) are either fire-and-forget with `.catch(() => {})` or awaited via `Promise.allSettled` — never use bare `Promise.all` for secondary sends.
 - Design tokens are CSS variables — use `var(--teal)`, `var(--coral)`, etc. rather than hardcoding colours.
 - Neon `sql` is a tagged template literal with automatic parameterisation — always pass values as template interpolations, never via string concatenation.
 - Catch database errors as `Error` — check `err.message` for Neon constraint violations (unique email → Postgres code `23505`).
@@ -165,7 +165,7 @@ CRON_SECRET                  # Secret for /api/auth/cleanup cron endpoint — se
 - Forgot/reset password: `/forgot-password` requests a reset link (uuid token, 1-hour expiry, stored on `users.password_reset_token/expires`); `/reset-password` validates the token and sets a new bcrypt-hashed password. Forgot-password always returns 200 to prevent email enumeration; only verified accounts receive a link
 - Student registration form with passport, admission letter, and profile photo upload (photo resized client-side to max 400 px before upload)
 - Admin review queue (approve / reject with reason + file deletion)
-- Email notifications: verification link, registration acknowledgement, approved, rejected
+- Email notifications: verification link, registration acknowledgement, approved, rejected; admin alerted on new registration; all approved peers at the same university notified when a new student from that university is approved
 - File uploads via Vercel Blob (public URLs); sensitive documents deleted from Blob after admin review
 - Live peer directory: real approved students heading to the same destination country, profile photos, email + opt-in phone
 - Dashboard peer directory: the peers query (`/api/students/peers`) returns **every approved student heading to my `country_of_education`**; the default dashboard view shows them all. `FlyMateExplorer` then narrows client-side with five composable "pick any" dropdowns — **University, City, Course, Degree, Intake** (options derived from the country pool, default "All") — plus active-filter chips + "Clear all", search, sort, and a phone-share toggle. 2-col layout: filters+peer grid on left, compact service sidebar on right (collapses to 1-col on narrow viewports). Mobile: filters hidden behind a "Filters" toggle button that opens a fixed drawer overlay. Selecting your own university/city gives "same university"/"same city"; University+City together give campus-level precision. Own city shown on the boarding pass; each peer card shows the peer's university + city

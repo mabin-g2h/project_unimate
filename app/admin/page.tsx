@@ -8,6 +8,7 @@ import Toast, { useToast } from '@/app/components/Toast';
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
+const GENDERS = ['Male', 'Female'];
 const YEARS = [2024, 2025, 2026, 2027];
 const inp: React.CSSProperties = {
   width: '100%', fontFamily: 'var(--font-body)', fontSize: '.9rem', color: 'var(--ink)',
@@ -23,7 +24,7 @@ interface Student {
   course_name: string | null; intake_month: string | null; intake_year: number | null;
   passport_url: string | null; admission_letter_url: string | null; profile_picture_url: string | null;
   status: string | null; submitted_at: string | null; rejection_reason: string | null;
-  city: string | null;
+  city: string | null; gender: string | null;
 }
 
 interface EditFormState {
@@ -31,7 +32,7 @@ interface EditFormState {
   country_of_origin: string; country_of_education: string;
   university_name: string; degree_level: string;
   course_name: string; intake_month: string; intake_year: string;
-  city: string;
+  city: string; gender: string;
 }
 
 interface University { id: number; name: string; }
@@ -163,7 +164,7 @@ export default function AdminPage() {
       university_name: s.university_name ?? '', degree_level: s.degree_level ?? '',
       course_name: s.course_name ?? '', intake_month: s.intake_month ?? '',
       intake_year: s.intake_year != null ? String(s.intake_year) : '',
-      city: s.city ?? '',
+      city: s.city ?? '', gender: s.gender ?? '',
     });
   }
 
@@ -420,6 +421,14 @@ export default function AdminPage() {
                             onChange={e => { setEditForm(f => f ? { ...f, city: e.target.value } : f); setIsDirty(true); }}>
                             <option value="">Select city</option>
                             {editCities.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+                          </select>
+                        </ModalEditField>
+
+                        <ModalEditField label="Gender">
+                          <select style={inp} value={editForm.gender}
+                            onChange={e => { setEditForm(f => f ? { ...f, gender: e.target.value } : f); setIsDirty(true); }}>
+                            <option value="">Select gender</option>
+                            {GENDERS.map(g => <option key={g}>{g}</option>)}
                           </select>
                         </ModalEditField>
 

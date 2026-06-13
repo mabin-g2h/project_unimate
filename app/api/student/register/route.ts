@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const required = [
     'full_name', 'country_of_origin', 'country_of_education',
     'university_name', 'degree_level', 'course_name',
-    'intake_month', 'intake_year', 'city',
+    'intake_month', 'intake_year', 'city', 'gender',
   ];
   for (const field of required) {
     if (!((formData.get(field) as string) ?? '').trim()) {
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     INSERT INTO student_profiles (
       user_id, full_name, phone, country_of_origin, country_of_education,
       university_name, degree_level, course_name, intake_month, intake_year,
-      city, passport_url, admission_letter_url, profile_picture_url, consented_at
+      city, gender, passport_url, admission_letter_url, profile_picture_url, consented_at
     ) VALUES (
       ${session.userId},
       ${fullName},
@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       ${formData.get('intake_month') as string},
       ${parseInt(formData.get('intake_year') as string, 10)},
       ${formData.get('city') as string},
+      ${formData.get('gender') as string},
       ${passportFile},
       ${admissionFile},
       ${profileFile},

@@ -13,6 +13,7 @@ interface RegistrationForm {
   intake_month: string;
   intake_year: string;
   city: string;
+  gender: string;
 }
 
 export interface RegistrationData {

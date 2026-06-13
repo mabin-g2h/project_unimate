@@ -39,7 +39,8 @@ CREATE TABLE student_profiles (
   rejection_reason      TEXT,
   share_phone           BOOLEAN DEFAULT false,          -- student opt-in to share phone with peers
   consented_at          TIMESTAMPTZ,                     -- set at registration; NULL = no consent recorded
-  city                  VARCHAR(255)                     -- destination city abroad; powers same-city peer discovery; NULL for pre-feature profiles
+  city                  VARCHAR(255),                    -- destination city abroad; powers same-city peer discovery; NULL for pre-feature profiles
+  gender                VARCHAR(10)                      -- 'Male' | 'Female'; required at registration; admin-visible only
 );
 
 CREATE TABLE flight_details (
@@ -128,3 +129,6 @@ CREATE TABLE cities (
 -- Migration 008 — forgot password reset tokens
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255);
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
+
+-- Migration 009 — gender field on student profiles
+-- ALTER TABLE student_profiles ADD COLUMN gender VARCHAR(10);

@@ -104,6 +104,7 @@ export default function ConsentPage() {
           <SummaryRow label="Intake" value={`${data.form.intake_month} ${data.form.intake_year}`} />
           <SummaryRow label="Degree" value={data.form.degree_level} />
           <SummaryRow label="City" value={data.form.city} />
+          <SummaryRow label="Gender" value={data.form.gender} />
           <SummaryRow label="Documents" value="Passport, Admission letter, Photo" />
         </div>
       </div>

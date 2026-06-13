@@ -10,6 +10,7 @@ import AppLogo from '@/app/components/AppLogo';
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
+const GENDERS = ['Male', 'Female'];
 const YEARS = [2024, 2025, 2026, 2027];
 
 interface University { id: number; name: string; }
@@ -20,7 +21,7 @@ interface FormState {
   country_of_origin: string; country_of_education: string;
   university_name: string; degree_level: string;
   course_name: string; intake_month: string; intake_year: string;
-  city: string;
+  city: string; gender: string;
 }
 
 function resizeImage(file: File, maxPx = 400): Promise<File> {
@@ -53,7 +54,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [form, setForm] = useState<FormState>({
     full_name: '', phone: '', country_of_origin: '', country_of_education: '',
-    university_name: '', degree_level: '', course_name: '', intake_month: '', intake_year: '', city: '',
+    university_name: '', degree_level: '', course_name: '', intake_month: '', intake_year: '', city: '', gender: '',
   });
   const [passportFile, setPassportFile] = useState<File | null>(null);
   const [admissionFile, setAdmissionFile] = useState<File | null>(null);
@@ -178,6 +179,12 @@ export default function RegisterPage() {
               <select style={inp} value={form.country_of_origin} onChange={e => set('country_of_origin', e.target.value)} required>
                 <option value="">Select country</option>
                 {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </Field>
+            <Field label="Gender" required>
+              <select style={inp} value={form.gender} onChange={e => set('gender', e.target.value)} required>
+                <option value="">Select gender</option>
+                {GENDERS.map(g => <option key={g}>{g}</option>)}
               </select>
             </Field>
           </Section>

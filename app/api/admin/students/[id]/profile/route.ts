@@ -33,13 +33,14 @@ export async function PATCH(
       course_name          = ${body.course_name ?? null},
       intake_month         = ${body.intake_month ?? null},
       intake_year          = ${body.intake_year ? parseInt(body.intake_year, 10) : null},
-      city                 = ${body.city ?? null}
+      city                 = ${body.city ?? null},
+      gender               = ${body.gender ?? null}
     WHERE id = ${profileId}
   `;
 
   const [updated] = await sql`
     SELECT id AS profile_id, full_name, phone, country_of_origin, country_of_education,
-           university_name, degree_level, course_name, intake_month, intake_year, city, status
+           university_name, degree_level, course_name, intake_month, intake_year, city, gender, status
     FROM student_profiles
     WHERE id = ${profileId}
   `;
