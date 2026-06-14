@@ -82,6 +82,9 @@ export default function PendingPage() {
                   </div>
                 ))}
               </div>
+              <p style={{ color: 'var(--ink-soft)', fontSize: '.82rem', lineHeight: 1.6, marginBottom: 24 }}>
+                Can&apos;t find our email? Please check your spam or junk folder for a message from UniMate.
+              </p>
             </>
           )}
 
