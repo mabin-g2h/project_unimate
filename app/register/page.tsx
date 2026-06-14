@@ -11,7 +11,8 @@ const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Au
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
 const GENDERS = ['Male', 'Female'];
-const YEARS = [2024, 2025, 2026, 2027];
+const YEARS = [2026, 2027, 2028, 2029, 2030];
+const OTHER = '__other__';
 
 interface University { id: number; name: string; }
 interface City { id: number; label: string; }
@@ -63,6 +64,8 @@ export default function RegisterPage() {
 
   const [universities, setUniversities] = useState<University[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [uniMode, setUniMode] = useState<'select' | 'other'>('select');
+  const [cityMode, setCityMode] = useState<'select' | 'other'>('select');
 
   const passportRef = useRef<HTMLInputElement>(null);
   const admissionRef = useRef<HTMLInputElement>(null);
@@ -99,6 +102,14 @@ export default function RegisterPage() {
       .then(({ cities: list }) => setCities(list ?? []));
   }, []);
 
+  // "Other" mode is active when the user explicitly picked Other, or when a
+  // restored custom value (e.g. coming back from the consent page) doesn't match
+  // any configured option. Derived during render to avoid setState-in-effect.
+  const uniOther = uniMode === 'other' ||
+    (!!form.university_name && universities.length > 0 && !universities.some(u => u.name === form.university_name));
+  const cityOther = cityMode === 'other' ||
+    (!!form.city && cities.length > 0 && !cities.some(c => c.label === form.city));
+
   function set(field: keyof FormState, value: string) {
     setForm(f => ({ ...f, [field]: value }));
   }
@@ -125,7 +136,12 @@ export default function RegisterPage() {
     if (!admissionFile) { setError('Please upload your admission letter (PDF).'); return; }
     if (!profileFile) { setError('Please upload a profile photo.'); return; }
 
-    setRegistrationData({ form, passportFile, admissionFile, profileFile });
+    const cleanedForm = {
+      ...form,
+      university_name: form.university_name.trim(),
+      city: form.city.trim(),
+    };
+    setRegistrationData({ form: cleanedForm, passportFile, admissionFile, profileFile });
     router.push('/register/consent');
   }
 
@@ -198,13 +214,66 @@ export default function RegisterPage() {
               </select>
             </Field>
             <Field label="University / institution name" required>
-              <select style={inp} value={form.university_name} onChange={e => set('university_name', e.target.value)} required>
+              <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
+                Can&apos;t find your university? Choose <strong style={{ color: 'var(--coral)' }}>Other</strong> at the bottom of the list to type it in.
+              </p>
+              <select
+                style={inp}
+                value={uniOther ? OTHER : form.university_name}
+                onChange={e => {
+                  if (e.target.value === OTHER) { setUniMode('other'); set('university_name', ''); }
+                  else { setUniMode('select'); set('university_name', e.target.value); }
+                }}
+                required
+              >
                 <option value="">Select university</option>
                 {universities.length === 0 && (
                   <option disabled value="">No universities configured — contact admin</option>
                 )}
                 {universities.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                <option value={OTHER} style={{ fontWeight: 700, color: 'var(--coral)' }}>✏️ Other — type it in yourself</option>
               </select>
+              {uniOther && (
+                <input
+                  type="text"
+                  style={{ ...inp, marginTop: 10 }}
+                  value={form.university_name}
+                  onChange={e => set('university_name', e.target.value)}
+                  placeholder="Type your university name"
+                  required
+                />
+              )}
+            </Field>
+            <Field label="City (where you'll be studying)" required>
+              <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
+                Can&apos;t find your city? Choose <strong style={{ color: 'var(--coral)' }}>Other</strong> to type it in.
+              </p>
+              <select
+                style={inp}
+                value={cityOther ? OTHER : form.city}
+                onChange={e => {
+                  if (e.target.value === OTHER) { setCityMode('other'); set('city', ''); }
+                  else { setCityMode('select'); set('city', e.target.value); }
+                }}
+                required
+              >
+                <option value="">Select city</option>
+                {cities.length === 0 && (
+                  <option disabled value="">No cities configured — contact admin</option>
+                )}
+                {cities.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+                <option value={OTHER} style={{ fontWeight: 700, color: 'var(--coral)' }}>✏️ Other — type it in yourself</option>
+              </select>
+              {cityOther && (
+                <input
+                  type="text"
+                  style={{ ...inp, marginTop: 10 }}
+                  value={form.city}
+                  onChange={e => set('city', e.target.value)}
+                  placeholder="Type your city"
+                  required
+                />
+              )}
             </Field>
             <Field label="Degree level" required>
               <select style={inp} value={form.degree_level} onChange={e => set('degree_level', e.target.value)} required>
@@ -239,24 +308,18 @@ export default function RegisterPage() {
                 </select>
               </Field>
             </div>
-            <Field label="City (where you'll be studying)" required>
-              <select style={inp} value={form.city} onChange={e => set('city', e.target.value)} required>
-                <option value="">Select city</option>
-                {cities.length === 0 && (
-                  <option disabled value="">No cities configured — contact admin</option>
-                )}
-                {cities.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
-              </select>
-            </Field>
           </Section>
 
           {/* Documents */}
           <Section title="Documents & Photo">
-            <p style={{ color: 'var(--ink-soft)', fontSize: '.84rem', marginBottom: 18, lineHeight: 1.6 }}>
-              Passport and admission letter must be PDF — max 2 MB each. Profile photo must be JPEG or PNG — max 1 MB. Documents are securely stored and deleted after verification.
+            <p style={{ color: 'var(--ink-soft)', fontSize: '.84rem', lineHeight: 1.6, marginBottom: 18 }}>
+              Documents are securely stored and deleted after verification.
             </p>
 
             <Field label="Passport copy (PDF)" required>
+              <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
+                PDF, max 2 MB.
+              </p>
               <div
                 onClick={() => passportRef.current?.click()}
                 style={{ ...uploadBox, borderColor: passportFile ? 'var(--teal)' : 'var(--line)', background: passportFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
@@ -271,6 +334,9 @@ export default function RegisterPage() {
             </Field>
 
             <Field label="Admission letter (PDF)" required>
+              <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
+                CoE / CAS / LOA &mdash; Letter of Acceptance / Offer of Place, as applicable to your destination country. PDF, max 2 MB.
+              </p>
               <div
                 onClick={() => admissionRef.current?.click()}
                 style={{ ...uploadBox, borderColor: admissionFile ? 'var(--teal)' : 'var(--line)', background: admissionFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
@@ -285,6 +351,9 @@ export default function RegisterPage() {
             </Field>
 
             <Field label="Profile photo" required>
+              <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
+                JPEG or PNG, max 1 MB.
+              </p>
               {profilePreview ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <img src={profilePreview} alt="Profile preview" style={{ width: 72, height: 72, borderRadius: 14, objectFit: 'cover', border: '2px solid var(--teal)' }} />
