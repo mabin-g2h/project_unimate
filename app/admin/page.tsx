@@ -10,6 +10,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
 const GENDERS = ['Male', 'Female'];
 const YEARS = [2024, 2025, 2026, 2027];
+const OTHER = '__other__';
 const inp: React.CSSProperties = {
   width: '100%', fontFamily: 'var(--font-body)', fontSize: '.9rem', color: 'var(--ink)',
   background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 10,
@@ -67,6 +68,8 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
   const [editUniversities, setEditUniversities] = useState<University[]>([]);
   const [editCities, setEditCities] = useState<City[]>([]);
+  const [editUniMode, setEditUniMode] = useState<'select' | 'other'>('select');
+  const [editCityMode, setEditCityMode] = useState<'select' | 'other'>('select');
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [isDirty, setIsDirty] = useState(false);
@@ -106,15 +109,31 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
+  // Review-modal university/city options are scoped to the student's chosen
+  // destination country. Keyed on the primitive country string so it only
+  // re-runs when the country actually changes (on modal open and on edit),
+  // mirroring the registration form's country-driven dropdowns.
+  const editCountry = editForm?.country_of_education ?? '';
   useEffect(() => {
-    Promise.all([
-      fetch('/api/options/universities').then(r => r.json()),
-      fetch('/api/options/cities').then(r => r.json()),
-    ]).then(([ur, cr]) => {
-      setEditUniversities(ur.universities ?? []);
-      setEditCities(cr.cities ?? []);
-    });
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!editCountry) { setEditUniversities([]); setEditCities([]); return; }
+    const q = encodeURIComponent(editCountry);
+    fetch(`/api/options/universities?country=${q}`)
+      .then(r => r.json())
+      .then(({ universities: list }) => setEditUniversities(list ?? []));
+    fetch(`/api/options/cities?country=${q}`)
+      .then(r => r.json())
+      .then(({ cities: list }) => setEditCities(list ?? []));
+  }, [editCountry]);
+
+  // "Other" (free-text) mode is active when explicitly chosen, or when a stored
+  // value isn't among the country-filtered options. The length>0 guard avoids a
+  // false "other" while the filtered list is still loading. Safe when editForm
+  // is null (modal closed). Mirrors the registration form's uniOther/cityOther.
+  const editUniOther = editUniMode === 'other' ||
+    (!!editForm?.university_name && editUniversities.length > 0 && !editUniversities.some(u => u.name === editForm.university_name));
+  const editCityOther = editCityMode === 'other' ||
+    (!!editForm?.city && editCities.length > 0 && !editCities.some(c => c.label === editForm.city));
 
   const loadDropdowns = useCallback(async () => {
     setDropdownsLoading(true);
@@ -160,6 +179,7 @@ export default function AdminPage() {
   function openModal(s: Student) {
     setSelected(s);
     setRejectionReason(''); setActionError(''); setSaveError(''); setIsDirty(false);
+    setEditUniMode('select'); setEditCityMode('select');
     setEditForm({
       full_name: s.full_name ?? '', phone: s.phone ?? '',
       country_of_origin: s.country_of_origin ?? '', country_of_education: s.country_of_education ?? '',
@@ -175,8 +195,25 @@ export default function AdminPage() {
     setRejectionReason(''); setActionError(''); setSaveError(''); setIsDirty(false);
   }
 
-  function handleEditUniversityChange(name: string) {
-    setEditForm(f => f ? { ...f, university_name: name } : f);
+  function handleEditUniversityChange(value: string) {
+    if (value === OTHER) {
+      setEditUniMode('other');
+      setEditForm(f => f ? { ...f, university_name: '' } : f);
+    } else {
+      setEditUniMode('select');
+      setEditForm(f => f ? { ...f, university_name: value } : f);
+    }
+    setIsDirty(true);
+  }
+
+  function handleEditCityChange(value: string) {
+    if (value === OTHER) {
+      setEditCityMode('other');
+      setEditForm(f => f ? { ...f, city: '' } : f);
+    } else {
+      setEditCityMode('select');
+      setEditForm(f => f ? { ...f, city: value } : f);
+    }
     setIsDirty(true);
   }
 
@@ -386,23 +423,36 @@ export default function AdminPage() {
 
                         <ModalEditField label="Country of education">
                           <select style={inp} value={editForm.country_of_education}
-                            onChange={e => { setEditForm(f => f ? { ...f, country_of_education: e.target.value } : f); setIsDirty(true); }}>
+                            onChange={e => {
+                              // Changing the destination country invalidates the
+                              // previously chosen university/city — blank both so
+                              // the dropdowns re-populate with the new country only.
+                              const country = e.target.value;
+                              setEditForm(f => f ? { ...f, country_of_education: country, university_name: '', city: '' } : f);
+                              setEditUniMode('select'); setEditCityMode('select');
+                              setIsDirty(true);
+                            }}>
                             <option value="">Select country</option>
                             {COUNTRIES.map(c => <option key={c}>{c}</option>)}
                           </select>
                         </ModalEditField>
 
                         <ModalEditField label="University">
-                          <select style={inp} value={editForm.university_name}
-                            onChange={e => handleEditUniversityChange(e.target.value)}>
-                            <option value="">Select university</option>
-                            {editForm.university_name && !editUniversities.find(u => u.name === editForm.university_name) && (
-                              <option value={editForm.university_name} disabled>
-                                {editForm.university_name} (not in list)
-                              </option>
-                            )}
+                          <select style={inp} value={editUniOther ? OTHER : editForm.university_name}
+                            onChange={e => handleEditUniversityChange(e.target.value)}
+                            disabled={!editForm.country_of_education}>
+                            <option value="">{editForm.country_of_education ? 'Select university' : 'Select country first'}</option>
                             {editUniversities.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                            {editForm.country_of_education && (
+                              <option value={OTHER}>✏️ Other — type it in yourself</option>
+                            )}
                           </select>
+                          {editUniOther && (
+                            <input type="text" style={{ ...inp, marginTop: 8 }}
+                              value={editForm.university_name}
+                              placeholder="Type university name"
+                              onChange={e => { setEditForm(f => f ? { ...f, university_name: e.target.value } : f); setIsDirty(true); }} />
+                          )}
                         </ModalEditField>
 
                         <ModalEditField label="Degree level">
@@ -421,11 +471,21 @@ export default function AdminPage() {
                         </ModalEditField>
 
                         <ModalEditField label="City">
-                          <select style={inp} value={editForm.city}
-                            onChange={e => { setEditForm(f => f ? { ...f, city: e.target.value } : f); setIsDirty(true); }}>
-                            <option value="">Select city</option>
+                          <select style={inp} value={editCityOther ? OTHER : editForm.city}
+                            onChange={e => handleEditCityChange(e.target.value)}
+                            disabled={!editForm.country_of_education}>
+                            <option value="">{editForm.country_of_education ? 'Select city' : 'Select country first'}</option>
                             {editCities.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+                            {editForm.country_of_education && (
+                              <option value={OTHER}>✏️ Other — type it in yourself</option>
+                            )}
                           </select>
+                          {editCityOther && (
+                            <input type="text" style={{ ...inp, marginTop: 8 }}
+                              value={editForm.city}
+                              placeholder="Type city name"
+                              onChange={e => { setEditForm(f => f ? { ...f, city: e.target.value } : f); setIsDirty(true); }} />
+                          )}
                         </ModalEditField>
 
                         <ModalEditField label="Gender">
