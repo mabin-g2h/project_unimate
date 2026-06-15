@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLogo from '@/app/components/AppLogo';
 import Toast, { useToast } from '@/app/components/Toast';
+import { COUNTRIES } from '@/lib/countries';
 
-const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
 const GENDERS = ['Male', 'Female'];
@@ -35,10 +35,10 @@ interface EditFormState {
   city: string; gender: string;
 }
 
-interface University { id: number; name: string; }
+interface University { id: number; name: string; country: string | null; }
 interface Airport { id: number; label: string; }
 interface Airline { id: number; name: string; }
-interface City { id: number; label: string; }
+interface City { id: number; label: string; country: string | null; }
 interface AdminUser { id: number; email: string; created_at: string; }
 interface AdminInvite { id: string; email: string; expires_at: string; created_at: string; }
 
@@ -79,9 +79,11 @@ export default function AdminPage() {
   const [dropdownsLoading, setDropdownsLoading] = useState(false);
 
   const [newUni, setNewUni] = useState('');
+  const [newUniCountry, setNewUniCountry] = useState('');
   const [newAirport, setNewAirport] = useState('');
   const [newAirline, setNewAirline] = useState('');
   const [newCity, setNewCity] = useState('');
+  const [newCityCountry, setNewCityCountry] = useState('');
   const [ddError, setDdError] = useState('');
 
   // ── Admins tab state ──────────────────────────────────────────────────────
@@ -221,14 +223,15 @@ export default function AdminPage() {
   // ── Dropdown management actions ───────────────────────────────────────────
   async function addUniversity() {
     if (!newUni.trim()) return;
+    if (!newUniCountry) { setDdError('Select a country for the university.'); return; }
     setDdError('');
     const res = await fetch('/api/admin/options/universities', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newUni.trim() }),
+      body: JSON.stringify({ name: newUni.trim(), country: newUniCountry }),
     });
     const data = await res.json();
     if (!res.ok) { setDdError(data.error ?? 'Failed'); return; }
-    setNewUni('');
+    setNewUni(''); setNewUniCountry('');
     loadDropdowns();
   }
 
@@ -275,14 +278,15 @@ export default function AdminPage() {
 
   async function addCity() {
     if (!newCity.trim()) return;
+    if (!newCityCountry) { setDdError('Select a country for the city.'); return; }
     setDdError('');
     const res = await fetch('/api/admin/options/cities', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: newCity.trim() }),
+      body: JSON.stringify({ label: newCity.trim(), country: newCityCountry }),
     });
     const data = await res.json();
     if (!res.ok) { setDdError(data.error ?? 'Failed'); return; }
-    setNewCity('');
+    setNewCity(''); setNewCityCountry('');
     loadDropdowns();
   }
 
@@ -732,18 +736,21 @@ export default function AdminPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                 {/* Universities */}
-                <DdSection title="Universities" hint="Shown in the university dropdown on the registration form. Course is now a free-text field students fill in themselves.">
+                <DdSection title="Universities" hint="Shown in the university dropdown on the registration form, filtered by the destination country the student selects. Course is now a free-text field students fill in themselves.">
                   <AddRow
                     placeholder="e.g. University of Melbourne"
                     value={newUni}
                     onChange={setNewUni}
                     onAdd={addUniversity}
                     label="Add university"
+                    countryValue={newUniCountry}
+                    onCountryChange={setNewUniCountry}
                   />
                   {universities.length === 0 && <EmptyHint>No universities yet.</EmptyHint>}
                   {universities.map(u => (
                     <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '11px 14px', background: 'var(--cream-2)', border: '1px solid var(--line-soft)', borderRadius: 10, gap: 10 }}>
                       <span style={{ fontWeight: 600, fontSize: '.86rem' }}>{u.name}</span>
+                      <CountryChip country={u.country} />
                       <div style={{ flex: 1 }} />
                       <DeleteBtn onClick={() => deleteUniversity(u.id)} />
                     </div>
@@ -781,17 +788,24 @@ export default function AdminPage() {
                 </DdSection>
 
                 {/* Cities */}
-                <DdSection title="Cities" hint="Destination cities abroad. Students pick their city at registration; powers same-city peer discovery on the dashboard.">
+                <DdSection title="Cities" hint="Destination cities abroad, filtered by the destination country the student selects. Students pick their city at registration; powers same-city peer discovery on the dashboard.">
                   <AddRow
                     placeholder='e.g. Melbourne'
                     value={newCity}
                     onChange={setNewCity}
                     onAdd={addCity}
                     label="Add city"
+                    countryValue={newCityCountry}
+                    onCountryChange={setNewCityCountry}
                   />
                   {cities.length === 0 && <EmptyHint>No cities yet.</EmptyHint>}
                   {cities.map(c => (
-                    <ItemRow key={c.id} label={c.label} onDelete={() => deleteCity(c.id)} />
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', padding: '11px 14px', background: 'var(--cream-2)', border: '1px solid var(--line-soft)', borderRadius: 10, gap: 10 }}>
+                      <span style={{ fontWeight: 600, fontSize: '.86rem' }}>{c.label}</span>
+                      <CountryChip country={c.country} />
+                      <div style={{ flex: 1 }} />
+                      <DeleteBtn onClick={() => deleteCity(c.id)} />
+                    </div>
                   ))}
                 </DdSection>
 
@@ -817,24 +831,51 @@ function DdSection({ title, hint, children }: { title: string; hint: string; chi
   );
 }
 
-function AddRow({ placeholder, value, onChange, onAdd, label, small }: {
+function AddRow({ placeholder, value, onChange, onAdd, label, small, countryValue, onCountryChange }: {
   placeholder: string; value: string; onChange: (v: string) => void;
   onAdd: () => void; label: string; small?: boolean;
+  countryValue?: string; onCountryChange?: (v: string) => void;
 }) {
   return (
-    <div style={{ display: 'flex', gap: 8 }}>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd(); } }}
         placeholder={placeholder}
-        style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: small ? '.86rem' : '.9rem', background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 9, padding: small ? '8px 12px' : '10px 14px', outline: 'none' }}
+        style={{ flex: '1 1 160px', fontFamily: 'var(--font-body)', fontSize: small ? '.86rem' : '.9rem', background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 9, padding: small ? '8px 12px' : '10px 14px', outline: 'none' }}
       />
+      {onCountryChange && (
+        <select
+          value={countryValue ?? ''}
+          onChange={e => onCountryChange(e.target.value)}
+          style={{ flex: '0 1 180px', fontFamily: 'var(--font-body)', fontSize: small ? '.86rem' : '.9rem', color: 'var(--ink)', background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 9, padding: small ? '8px 12px' : '10px 14px', outline: 'none' }}
+        >
+          <option value="">Country…</option>
+          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      )}
       <button onClick={onAdd}
         style={{ padding: small ? '8px 14px' : '10px 18px', borderRadius: 9, border: 'none', background: 'var(--teal)', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: small ? '.82rem' : '.86rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
         + {label}
       </button>
     </div>
+  );
+}
+
+function CountryChip({ country }: { country: string | null }) {
+  if (!country) {
+    return (
+      <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--coral)', background: 'var(--coral-tint)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}
+        title="This entry has no country and won't appear in any country-filtered dropdown. Delete and re-add it with a country.">
+        ⚠ No country — re-add
+      </span>
+    );
+  }
+  return (
+    <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--ink-soft)', background: 'var(--cream)', border: '1px solid var(--line-soft)', borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}>
+      {country}
+    </span>
   );
 }
 

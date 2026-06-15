@@ -69,8 +69,10 @@ CREATE TABLE admin_invites (
 
 CREATE TABLE universities (
   id         SERIAL PRIMARY KEY,
-  name       VARCHAR(255) UNIQUE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  name       VARCHAR(255) NOT NULL,
+  country    VARCHAR(100),                  -- destination country; filters the university dropdown by country_of_education; NULL for pre-feature rows
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (name, country)                    -- country-scoped: same-named universities can exist in different countries
 );
 
 CREATE TABLE courses (
@@ -94,8 +96,10 @@ CREATE TABLE airlines (
 
 CREATE TABLE cities (
   id         SERIAL PRIMARY KEY,
-  label      VARCHAR(255) UNIQUE NOT NULL,  -- destination city abroad, e.g. "Melbourne"
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  label      VARCHAR(255) NOT NULL,         -- destination city abroad, e.g. "Melbourne"
+  country    VARCHAR(100),                  -- destination country; filters the city dropdown by country_of_education; NULL for pre-feature rows
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (label, country)                   -- country-scoped: same-named cities can exist in different countries (e.g. London UK / London, Canada)
 );
 
 -- ─── Migrations (apply to existing databases in order) ────────────────────────
@@ -132,3 +136,15 @@ CREATE TABLE cities (
 
 -- Migration 009 — gender field on student profiles
 -- ALTER TABLE student_profiles ADD COLUMN gender VARCHAR(10);
+
+-- Migration 010 — country-scoped universities & cities (registration dropdowns filtered by country_of_education)
+-- ALTER TABLE universities ADD COLUMN IF NOT EXISTS country VARCHAR(100);
+-- ALTER TABLE cities       ADD COLUMN IF NOT EXISTS country VARCHAR(100);
+-- -- Replace global name uniqueness with country-scoped uniqueness so the same-named
+-- -- place can exist in two countries (e.g. London UK vs London, Canada).
+-- -- NOTE: confirm the existing constraint names first via \d universities / \d cities (defaults shown below).
+-- ALTER TABLE universities DROP CONSTRAINT IF EXISTS universities_name_key;
+-- ALTER TABLE universities ADD CONSTRAINT universities_name_country_key UNIQUE (name, country);
+-- ALTER TABLE cities       DROP CONSTRAINT IF EXISTS cities_label_key;
+-- ALTER TABLE cities       ADD CONSTRAINT cities_label_country_key UNIQUE (label, country);
+-- -- Existing rows keep country = NULL until an admin re-adds them with a country.

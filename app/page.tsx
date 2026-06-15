@@ -57,7 +57,7 @@ export default function Home() {
       .then(({ user }) => {
         if (!user) { router.replace("/login"); return; }
         if (user.role === "admin") { router.replace("/admin"); return; }
-        if (!user.registration_status) { router.replace("/register"); return; }
+        if (!user.registration_status || user.registration_status === "rejected") { router.replace("/register"); return; }
         if (user.registration_status !== "approved") { router.replace("/pending"); return; }
         loadData().then(() => setReady(true));
       });

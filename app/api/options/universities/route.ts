@@ -1,21 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { sql } from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rows = await sql`
-    SELECT u.id, u.name, COALESCE(
-      JSON_AGG(JSON_BUILD_OBJECT('id', c.id, 'name', c.name) ORDER BY c.name)
-        FILTER (WHERE c.id IS NOT NULL),
-      '[]'
-    ) AS courses
-    FROM universities u
-    LEFT JOIN courses c ON c.university_id = u.id
-    GROUP BY u.id, u.name
-    ORDER BY u.name
-  `;
+  // Optional country filter — students see only universities in their chosen
+  // destination country. Absent (e.g. admin dropdown manager) returns all.
+  const country = req.nextUrl.searchParams.get("country")?.trim();
+
+  const rows = country
+    ? await sql`SELECT id, name, country FROM universities WHERE country = ${country} ORDER BY name`
+    : await sql`SELECT id, name, country FROM universities ORDER BY name`;
   return NextResponse.json({ universities: rows });
 }

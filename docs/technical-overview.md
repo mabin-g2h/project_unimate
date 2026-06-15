@@ -123,13 +123,16 @@ Sensitive documents (passport and admission letter) are deleted from Blob via `d
 Students create an account with their email and password. A verification link is emailed immediately. The link expires after 12 hours. If a student tries to re-register with the same email after their token has expired, the system automatically removes the stale unverified row before creating a fresh one, so they can start over cleanly. Expired unverified rows are also purged daily by a Vercel cron job (`/api/auth/cleanup`, secured with `CRON_SECRET`).
 
 **Registration Form**
-After verifying their email, students fill out a 10-field registration form covering personal details (name, phone, country of origin), academic details (university, course/programme as free text, degree level, intake month/year, destination city), and three file uploads (passport scan, admission letter, profile photo). Profile photos are resized client-side to a maximum of 400px before upload to keep storage lean. On submission, an acknowledgement email goes to the student and an alert email is sent to the admin (`ADMIN_EMAIL`) notifying them of the new application.
+After verifying their email, students fill out an eleven-field registration form covering personal details (name, phone, country of origin, gender) and academic details in a natural order — destination country, university, city, degree level, course/programme (free text), and intake month/year — plus three file uploads (passport scan, admission letter, profile photo). The university and city dropdowns each include a stand-out **"Other"** option that reveals a free-text input, so a student whose institution or city isn't in the admin-managed list can still register; the typed value is stored on their profile (like the free-text course name) rather than being added to the dropdown tables. Each upload field shows its own format and size requirement inline (PDF, max 2 MB for documents; JPEG or PNG, max 1 MB for photos), and profile photos are resized client-side to a maximum of 400px before upload to keep storage lean. On submission, an acknowledgement email goes to the student and an alert email is sent to the admin (`ADMIN_EMAIL`) notifying them of the new application.
 
 **Consent Flow**
 After completing the registration form, students are taken to a dedicated consent page before submission. They must check four declarations covering document storage, profile picture use, email sharing, and phone number collection. The moment of consent is recorded as a `consented_at` timestamp in the database. The form data is held in memory via a React context across the two-page flow.
 
 **Application Status Page**
-While waiting for admin review, students see a status page (`/pending`) showing whether their application is pending or has been rejected (with the rejection reason if applicable).
+While waiting for admin review, students see a status page (`/pending`) confirming their application is pending. The pending view also reminds students to check their spam or junk folder for emails from UniMate.
+
+**Re-registration After Rejection**
+A rejected student's account is kept in the database with `status = 'rejected'` (nothing is deleted). On their next login the app detects the rejected status and routes them **straight to a fresh, blank registration form** (`/register`) rather than the status page, so they can re-apply immediately. The rejection reason is communicated by email. When they submit the new application, the old rejected profile row is replaced and the application returns to `pending` for review.
 
 **Dashboard (Approved Students)**
 Approved students land on the main dashboard, which shows:
@@ -178,6 +181,7 @@ New admins are added via an invite link (48-hour expiry). An existing admin send
 7. Receive approval/rejection email
 8. If approved  →  all existing approved students at the same university receive a peer-join notification
 9. If approved  →  log in and land on dashboard
+10. If rejected  →  account kept as 'rejected'; next login routes straight to a blank /register form to re-apply (old profile replaced on resubmit)
 ```
 
 ### Admin Review Flow

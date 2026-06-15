@@ -6,8 +6,8 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { useRegistration } from './context';
 import AppLogo from '@/app/components/AppLogo';
+import { COUNTRIES } from '@/lib/countries';
 
-const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
 const GENDERS = ['Male', 'Female'];
@@ -91,16 +91,21 @@ export default function RegisterPage() {
     });
   }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // University and city options are scoped to the chosen destination country.
+  // Re-fetches whenever the country changes (incl. when restored from context
+  // on return from the consent page); clears the lists when no country is set.
   useEffect(() => {
-    fetch('/api/options/universities')
+    const country = form.country_of_education;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!country) { setUniversities([]); setCities([]); return; }
+    const q = encodeURIComponent(country);
+    fetch(`/api/options/universities?country=${q}`)
       .then(r => r.json())
-      .then(({ universities: list }) => {
-        setUniversities(list ?? []);
-      });
-    fetch('/api/options/cities')
+      .then(({ universities: list }) => setUniversities(list ?? []));
+    fetch(`/api/options/cities?country=${q}`)
       .then(r => r.json())
       .then(({ cities: list }) => setCities(list ?? []));
-  }, []);
+  }, [form.country_of_education]);
 
   // "Other" mode is active when the user explicitly picked Other, or when a
   // restored custom value (e.g. coming back from the consent page) doesn't match
@@ -208,7 +213,19 @@ export default function RegisterPage() {
           {/* Academic Details */}
           <Section title="Academic Details">
             <Field label="Country of education (destination)" required>
-              <select style={inp} value={form.country_of_education} onChange={e => set('country_of_education', e.target.value)} required>
+              <select
+                style={inp}
+                value={form.country_of_education}
+                onChange={e => {
+                  // Changing the destination country invalidates any previously
+                  // chosen university/city (they belong to the old country).
+                  const country = e.target.value;
+                  setForm(f => ({ ...f, country_of_education: country, university_name: '', city: '' }));
+                  setUniMode('select');
+                  setCityMode('select');
+                }}
+                required
+              >
                 <option value="">Select country</option>
                 {COUNTRIES.map(c => <option key={c}>{c}</option>)}
               </select>
@@ -224,14 +241,17 @@ export default function RegisterPage() {
                   if (e.target.value === OTHER) { setUniMode('other'); set('university_name', ''); }
                   else { setUniMode('select'); set('university_name', e.target.value); }
                 }}
+                disabled={!form.country_of_education}
                 required
               >
-                <option value="">Select university</option>
-                {universities.length === 0 && (
-                  <option disabled value="">No universities configured — contact admin</option>
+                <option value="">{form.country_of_education ? 'Select university' : 'Select your destination country first'}</option>
+                {form.country_of_education && universities.length === 0 && (
+                  <option disabled value="">No universities listed for {form.country_of_education} — choose Other below</option>
                 )}
                 {universities.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-                <option value={OTHER} style={{ fontWeight: 700, color: 'var(--coral)' }}>✏️ Other — type it in yourself</option>
+                {form.country_of_education && (
+                  <option value={OTHER} style={{ fontWeight: 700, color: 'var(--coral)' }}>✏️ Other — type it in yourself</option>
+                )}
               </select>
               {uniOther && (
                 <input
@@ -255,14 +275,17 @@ export default function RegisterPage() {
                   if (e.target.value === OTHER) { setCityMode('other'); set('city', ''); }
                   else { setCityMode('select'); set('city', e.target.value); }
                 }}
+                disabled={!form.country_of_education}
                 required
               >
-                <option value="">Select city</option>
-                {cities.length === 0 && (
-                  <option disabled value="">No cities configured — contact admin</option>
+                <option value="">{form.country_of_education ? 'Select city' : 'Select your destination country first'}</option>
+                {form.country_of_education && cities.length === 0 && (
+                  <option disabled value="">No cities listed for {form.country_of_education} — choose Other below</option>
                 )}
                 {cities.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
-                <option value={OTHER} style={{ fontWeight: 700, color: 'var(--coral)' }}>✏️ Other — type it in yourself</option>
+                {form.country_of_education && (
+                  <option value={OTHER} style={{ fontWeight: 700, color: 'var(--coral)' }}>✏️ Other — type it in yourself</option>
+                )}
               </select>
               {cityOther && (
                 <input

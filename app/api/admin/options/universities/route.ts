@@ -7,13 +7,14 @@ export async function POST(req: NextRequest) {
   if (!session || session.role !== "admin")
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { name } = await req.json();
+  const { name, country } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
+  if (!country?.trim()) return NextResponse.json({ error: "Country required" }, { status: 400 });
 
   try {
     const [row] = await sql`
-      INSERT INTO universities (name) VALUES (${name.trim()})
-      RETURNING id, name
+      INSERT INTO universities (name, country) VALUES (${name.trim()}, ${country.trim()})
+      RETURNING id, name, country
     `;
     return NextResponse.json({ university: row }, { status: 201 });
   } catch (err) {
