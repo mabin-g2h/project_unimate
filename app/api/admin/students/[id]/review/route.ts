@@ -6,6 +6,41 @@ import { del } from '@vercel/blob';
 
 export const runtime = 'nodejs';
 
+// Best-effort: add an approved student's (admin-confirmed) university/city to the
+// reference tables so the country-scoped dropdowns grow accurately over time.
+// Case-insensitive, country-scoped existence check prevents near-duplicate rows;
+// ON CONFLICT guards the exact-match race. Never throws — directory growth is a
+// secondary effect and must not block an approval.
+async function ensureUniversity(value: string, country: string) {
+  const name = (value ?? '').trim().replace(/\s+/g, ' ');
+  if (!name || !country?.trim()) return;
+  try {
+    const existing = await sql`
+      SELECT 1 FROM universities WHERE LOWER(name) = LOWER(${name}) AND country = ${country} LIMIT 1
+    `;
+    if (existing.length) return;
+    await sql`
+      INSERT INTO universities (name, country) VALUES (${name}, ${country})
+      ON CONFLICT (name, country) DO NOTHING
+    `;
+  } catch { /* best-effort */ }
+}
+
+async function ensureCity(value: string, country: string) {
+  const label = (value ?? '').trim().replace(/\s+/g, ' ');
+  if (!label || !country?.trim()) return;
+  try {
+    const existing = await sql`
+      SELECT 1 FROM cities WHERE LOWER(label) = LOWER(${label}) AND country = ${country} LIMIT 1
+    `;
+    if (existing.length) return;
+    await sql`
+      INSERT INTO cities (label, country) VALUES (${label}, ${country})
+      ON CONFLICT (label, country) DO NOTHING
+    `;
+  } catch { /* best-effort */ }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -51,6 +86,10 @@ export async function POST(
   }
 
   if (action === 'approve') {
+    // Grow the reference directory from the admin-confirmed values (best-effort).
+    await ensureUniversity(profile.university_name, profile.country_of_education);
+    await ensureCity(profile.city, profile.country_of_education);
+
     await sendApprovalEmail(profile.email, profile.full_name);
 
     const peers = await sql`
