@@ -135,6 +135,14 @@ export default function AdminPage() {
   const editCityOther = editCityMode === 'other' ||
     (!!editForm?.city && editCities.length > 0 && !editCities.some(c => c.label === editForm.city));
 
+  // True when the current university/city value isn't in the chosen country's
+  // directory (case-insensitive) — it will be auto-added to the reference table
+  // when this student is approved. Drives the "New — will be added" badge.
+  const editUniIsNew = !!editForm?.university_name?.trim() && !!editForm?.country_of_education &&
+    !editUniversities.some(u => u.name.toLowerCase() === editForm!.university_name.trim().toLowerCase());
+  const editCityIsNew = !!editForm?.city?.trim() && !!editForm?.country_of_education &&
+    !editCities.some(c => c.label.toLowerCase() === editForm!.city.trim().toLowerCase());
+
   const loadDropdowns = useCallback(async () => {
     setDropdownsLoading(true);
     const [ur, ar, al, ci] = await Promise.all([
@@ -453,6 +461,11 @@ export default function AdminPage() {
                               placeholder="Type university name"
                               onChange={e => { setEditForm(f => f ? { ...f, university_name: e.target.value } : f); setIsDirty(true); }} />
                           )}
+                          {editUniIsNew && (
+                            <span style={{ display: 'inline-block', marginTop: 6, fontSize: 12, fontWeight: 700, color: 'var(--coral)', background: '#FDECE7', padding: '3px 10px', borderRadius: 999 }}>
+                              ⚠ New — will be added to the {editForm.country_of_education} directory on approval
+                            </span>
+                          )}
                         </ModalEditField>
 
                         <ModalEditField label="Degree level">
@@ -485,6 +498,11 @@ export default function AdminPage() {
                               value={editForm.city}
                               placeholder="Type city name"
                               onChange={e => { setEditForm(f => f ? { ...f, city: e.target.value } : f); setIsDirty(true); }} />
+                          )}
+                          {editCityIsNew && (
+                            <span style={{ display: 'inline-block', marginTop: 6, fontSize: 12, fontWeight: 700, color: 'var(--coral)', background: '#FDECE7', padding: '3px 10px', borderRadius: 999 }}>
+                              ⚠ New — will be added to the {editForm.country_of_education} directory on approval
+                            </span>
                           )}
                         </ModalEditField>
 
