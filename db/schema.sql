@@ -65,6 +65,22 @@ CREATE TABLE admin_invites (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ─── Peer invite table ────────────────────────────────────────────────────────
+-- Records peer-to-peer invitations sent from the student dashboard. No token /
+-- expiry: invitees join through the normal signup flow (no privilege bypass).
+-- Used only for per-student rate-limiting, recent-dedup, and attribution.
+-- No UNIQUE(email): the same person may legitimately be invited by many students.
+
+CREATE TABLE peer_invites (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      VARCHAR(255) NOT NULL,          -- invitee email, normalised lowercase
+  invited_by INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_peer_invites_inviter_date ON peer_invites (invited_by, created_at);
+CREATE INDEX idx_peer_invites_email ON peer_invites (email);
+
 -- ─── Reference / dropdown tables ─────────────────────────────────────────────
 
 CREATE TABLE universities (
@@ -85,6 +101,7 @@ CREATE TABLE courses (
 CREATE TABLE airports (
   id         SERIAL PRIMARY KEY,
   label      VARCHAR(255) UNIQUE NOT NULL,  -- e.g. "New Delhi (DEL)"
+  country    VARCHAR(100),                  -- destination country; scopes the flight-details ARRIVAL dropdown by country_of_education; NULL for pre-feature rows (still shown in the global departure list)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -148,3 +165,19 @@ CREATE TABLE cities (
 -- ALTER TABLE cities       DROP CONSTRAINT IF EXISTS cities_label_key;
 -- ALTER TABLE cities       ADD CONSTRAINT cities_label_country_key UNIQUE (label, country);
 -- -- Existing rows keep country = NULL until an admin re-adds them with a country.
+
+-- Migration 011 — country-scoped arrival airports (flight-details arrival dropdown filtered by country_of_education)
+-- ALTER TABLE airports ADD COLUMN IF NOT EXISTS country VARCHAR(100);
+-- Keep UNIQUE(label): an airport is one physical place. Departure dropdown stays global (all airports);
+-- arrival dropdown filters by country. Existing rows keep country = NULL until an admin re-adds them with a country.
+
+-- Migration 012 — peer invite table (student-to-student "Invite a peer" dashboard feature)
+-- No token/expiry: invitees join via the normal signup flow. Used for rate-limiting, recent-dedup, and attribution.
+-- CREATE TABLE peer_invites (
+--   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   email      VARCHAR(255) NOT NULL,
+--   invited_by INT REFERENCES users(id) ON DELETE SET NULL,
+--   created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+-- CREATE INDEX idx_peer_invites_inviter_date ON peer_invites (invited_by, created_at);
+-- CREATE INDEX idx_peer_invites_email ON peer_invites (email);

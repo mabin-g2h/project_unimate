@@ -37,7 +37,7 @@ interface EditFormState {
 }
 
 interface University { id: number; name: string; country: string | null; }
-interface Airport { id: number; label: string; }
+interface Airport { id: number; label: string; country: string | null; }
 interface Airline { id: number; name: string; }
 interface City { id: number; label: string; country: string | null; }
 interface AdminUser { id: number; email: string; created_at: string; }
@@ -84,6 +84,7 @@ export default function AdminPage() {
   const [newUni, setNewUni] = useState('');
   const [newUniCountry, setNewUniCountry] = useState('');
   const [newAirport, setNewAirport] = useState('');
+  const [newAirportCountry, setNewAirportCountry] = useState('');
   const [newAirline, setNewAirline] = useState('');
   const [newCity, setNewCity] = useState('');
   const [newCityCountry, setNewCityCountry] = useState('');
@@ -287,14 +288,15 @@ export default function AdminPage() {
 
   async function addAirport() {
     if (!newAirport.trim()) return;
+    if (!newAirportCountry) { setDdError('Select a country for the airport.'); return; }
     setDdError('');
     const res = await fetch('/api/admin/options/airports', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: newAirport.trim() }),
+      body: JSON.stringify({ label: newAirport.trim(), country: newAirportCountry }),
     });
     const data = await res.json();
     if (!res.ok) { setDdError(data.error ?? 'Failed'); return; }
-    setNewAirport('');
+    setNewAirport(''); setNewAirportCountry('');
     loadDropdowns();
   }
 
@@ -836,17 +838,24 @@ export default function AdminPage() {
                 </DdSection>
 
                 {/* Airports */}
-                <DdSection title="Airports / Cities" hint="Used in the departure and arrival dropdowns in flight details.">
+                <DdSection title="Airports" hint="Departure dropdown in flight details shows all airports; the arrival dropdown is filtered to the student's destination country, so tag each airport with its country.">
                   <AddRow
-                    placeholder='e.g. New Delhi (DEL)'
+                    placeholder='e.g. Melbourne (MEL)'
                     value={newAirport}
                     onChange={setNewAirport}
                     onAdd={addAirport}
                     label="Add airport"
+                    countryValue={newAirportCountry}
+                    onCountryChange={setNewAirportCountry}
                   />
                   {airports.length === 0 && <EmptyHint>No airports yet.</EmptyHint>}
                   {airports.map(a => (
-                    <ItemRow key={a.id} label={a.label} onDelete={() => deleteAirport(a.id)} />
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', padding: '11px 14px', background: 'var(--cream-2)', border: '1px solid var(--line-soft)', borderRadius: 10, gap: 10 }}>
+                      <span style={{ fontWeight: 600, fontSize: '.86rem' }}>{a.label}</span>
+                      <CountryChip country={a.country} />
+                      <div style={{ flex: 1 }} />
+                      <DeleteBtn onClick={() => deleteAirport(a.id)} />
+                    </div>
                   ))}
                 </DdSection>
 

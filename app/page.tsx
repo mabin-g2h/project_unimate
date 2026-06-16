@@ -230,6 +230,7 @@ export default function Home() {
       {showFlightModal && (
         <FlightDetailsModal
           current={myFlight}
+          destinationCountry={myProfile?.country_of_education ?? ""}
           onSave={handleFlightSaved}
           onClose={() => setShowFlightModal(false)}
         />

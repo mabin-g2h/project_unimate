@@ -12,11 +12,14 @@ export interface FlightDetails {
 
 interface Props {
   current: FlightDetails | null;
+  destinationCountry: string;
   onSave: (details: FlightDetails) => void;
   onClose: () => void;
 }
 
-export default function FlightDetailsModal({ current, onSave, onClose }: Props) {
+const OTHER = "__other__";
+
+export default function FlightDetailsModal({ current, destinationCountry, onSave, onClose }: Props) {
   const [form, setForm] = useState<FlightDetails>({
     departure_from: current?.departure_from ?? "",
     arrival: current?.arrival ?? "",
@@ -25,8 +28,12 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
   });
   const [saving, setSaving] = useState(false);
   const [airports, setAirports] = useState<{ id: number; label: string }[]>([]);
+  const [arrivalAirports, setArrivalAirports] = useState<{ id: number; label: string }[]>([]);
   const [airlines, setAirlines] = useState<{ id: number; name: string }[]>([]);
+  const [depMode, setDepMode] = useState<"select" | "other">("select");
+  const [arrMode, setArrMode] = useState<"select" | "other">("select");
 
+  // Departure stays global (all airports); airlines are global too.
   useEffect(() => {
     Promise.all([
       fetch("/api/options/airports").then(r => r.json()),
@@ -36,6 +43,24 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
       setAirlines(al ?? []);
     });
   }, []);
+
+  // Arrival is scoped to the student's destination country (empty list until one is known).
+  useEffect(() => {
+    if (!destinationCountry) return;
+    let active = true;
+    fetch(`/api/options/airports?country=${encodeURIComponent(destinationCountry)}`)
+      .then(r => r.json())
+      .then(({ airports: ap }) => { if (active) setArrivalAirports(ap ?? []); });
+    return () => { active = false; };
+  }, [destinationCountry]);
+
+  // "Other" is active when explicitly chosen, or the saved value isn't in the list
+  // (e.g. a previously typed-in airport). length>0 guard avoids a false "other"
+  // while the list is still loading. Mirrors the registration form's uniOther/cityOther.
+  const depOther = depMode === "other" ||
+    (!!form.departure_from && airports.length > 0 && !airports.some(a => a.label === form.departure_from));
+  const arrOther = arrMode === "other" ||
+    (!!form.arrival && arrivalAirports.length > 0 && !arrivalAirports.some(a => a.label === form.arrival));
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -149,19 +174,51 @@ export default function FlightDetailsModal({ current, onSave, onClose }: Props) 
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <Field label="Departure city / airport">
-                <select value={form.departure_from} onChange={e => set("departure_from", e.target.value)} style={selectCss}>
+                <select
+                  value={depOther ? OTHER : form.departure_from}
+                  onChange={e => {
+                    if (e.target.value === OTHER) { setDepMode("other"); set("departure_from", ""); }
+                    else { setDepMode("select"); set("departure_from", e.target.value); }
+                  }}
+                  style={selectCss}
+                >
                   <option value="">Select departure</option>
-                  {airports.length === 0 && <option disabled value="">No airports configured</option>}
                   {airports.map(a => <option key={a.id} value={a.label}>{a.label}</option>)}
+                  <option value={OTHER}>✏️ Other — type it in yourself</option>
                 </select>
+                {depOther && (
+                  <input
+                    type="text"
+                    style={{ ...inputCss, marginTop: 8 }}
+                    value={form.departure_from}
+                    placeholder="Type departure city / airport"
+                    onChange={e => set("departure_from", e.target.value)}
+                  />
+                )}
               </Field>
 
               <Field label="Arrival city / airport">
-                <select value={form.arrival} onChange={e => set("arrival", e.target.value)} style={selectCss}>
-                  <option value="">Select arrival</option>
-                  {airports.length === 0 && <option disabled value="">No airports configured</option>}
-                  {airports.map(a => <option key={a.id} value={a.label}>{a.label}</option>)}
+                <select
+                  value={arrOther ? OTHER : form.arrival}
+                  onChange={e => {
+                    if (e.target.value === OTHER) { setArrMode("other"); set("arrival", ""); }
+                    else { setArrMode("select"); set("arrival", e.target.value); }
+                  }}
+                  style={selectCss}
+                >
+                  <option value="">{arrivalAirports.length > 0 ? "Select arrival" : "No airports yet — choose Other"}</option>
+                  {arrivalAirports.map(a => <option key={a.id} value={a.label}>{a.label}</option>)}
+                  <option value={OTHER}>✏️ Other — type it in yourself</option>
                 </select>
+                {arrOther && (
+                  <input
+                    type="text"
+                    style={{ ...inputCss, marginTop: 8 }}
+                    value={form.arrival}
+                    placeholder="Type arrival city / airport"
+                    onChange={e => set("arrival", e.target.value)}
+                  />
+                )}
               </Field>
 
               <Field label="Travel date">

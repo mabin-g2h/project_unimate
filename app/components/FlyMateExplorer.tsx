@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import StudentCard, { Peer } from "./StudentCard";
+import InvitePeerModal from "./InvitePeerModal";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -84,6 +85,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
   const [degree, setDegree] = useState("");
   const [intake, setIntake] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   function clearFilters() {
     setUniversity(""); setCity(""); setCourse(""); setDegree(""); setIntake("");
@@ -362,6 +364,35 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
         {/* RIGHT: service cards — icon + title + tag + CTA only */}
         <aside className="service-sidebar" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              onClick={() => setInviteOpen(true)}
+              style={{
+                background: "var(--paper)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)",
+                padding: "14px", boxShadow: "var(--shadow)", cursor: "pointer", textAlign: "left",
+                transition: "transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, border-color .25s",
+              }}
+              className="svc-card"
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center",
+                  flexShrink: 0, background: "var(--coral-tint)", color: "var(--coral-deep)",
+                }}>
+                  <div style={{ width: 18, height: 18 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: ".88rem", letterSpacing: "-.01em", lineHeight: 1.2 }}>Invite a peer</div>
+                  <div style={{ fontSize: ".62rem", color: "var(--ink-faint)", marginTop: 2, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase" }}>Grow the network</div>
+                </div>
+              </div>
+              <span style={{ fontWeight: 700, fontSize: ".74rem", color: "var(--teal)", display: "flex", alignItems: "center", gap: 5 }}>
+                Send invite <ArrowRight />
+              </span>
+            </button>
             {services.map(s => (
               <button
                 key={s.key}
@@ -394,6 +425,8 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
         </aside>
 
       </div>
+
+      {inviteOpen && <InvitePeerModal onClose={() => setInviteOpen(false)} onToast={onToast} />}
     </section>
   );
 }
