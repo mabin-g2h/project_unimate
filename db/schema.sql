@@ -10,7 +10,7 @@ CREATE TABLE users (
   password_hash        VARCHAR(255) NOT NULL,
   email_verified       BOOLEAN DEFAULT false,
   verification_token    VARCHAR(255),
-  verification_expires  TIMESTAMPTZ,
+  verification_expires  TIMESTAMPTZ,                       -- pre-verify: 12h link expiry; post-verify (students): 48h deadline to submit the registration form; NULL once the form is submitted (or for admins). Abandoned no-form rows are purged on cron + next signup.
   password_reset_token  VARCHAR(255),
   password_reset_expires TIMESTAMPTZ,
   role                  VARCHAR(20) DEFAULT 'student',   -- 'student' | 'admin'
@@ -181,3 +181,10 @@ CREATE TABLE cities (
 -- );
 -- CREATE INDEX idx_peer_invites_inviter_date ON peer_invites (invited_by, created_at);
 -- CREATE INDEX idx_peer_invites_email ON peer_invites (email);
+
+-- Migration 013 — post-verification registration deadline (no DDL change)
+-- Repurposes users.verification_expires: on email verification, students get
+-- verification_expires = NOW() + 48h as a deadline to submit the registration
+-- form (admins get NULL). Submitting the form clears it (NULL). Abandoned
+-- no-form student accounts (verification_expires < NOW(), no student_profiles
+-- row) are purged by the daily cron + inline on next signup, freeing the email.

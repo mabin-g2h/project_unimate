@@ -15,10 +15,11 @@ export default function Navbar() {
     <nav style={{
       position: "sticky", top: 0, zIndex: 40,
       backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
       background: "rgba(255,255,255,0.72)",
       borderBottom: "1px solid rgba(0,0,0,0.1)",
     }}>
-      <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 60, maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
+      <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 60, maxWidth: 1120, margin: "0 auto", padding: "0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left))" }}>
         <AppLogo height={40} />
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -41,7 +42,7 @@ export default function Navbar() {
               borderRadius: 200, padding: "10px 16px", cursor: "pointer",
               fontFamily: "var(--font-body)", fontWeight: 500, fontSize: ".82rem",
               color: "#fff", transition: ".18s",
-              minHeight: 36,
+              minHeight: 44,
             }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

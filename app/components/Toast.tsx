@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export interface ToastItem {
   id: number;
@@ -11,10 +11,9 @@ export interface ToastItem {
 
 interface ToastProps {
   toasts: ToastItem[];
-  onRemove: (id: number) => void;
 }
 
-export default function Toast({ toasts, onRemove }: ToastProps) {
+export default function Toast({ toasts }: ToastProps) {
   return (
     <div style={{
       position: "fixed", left: "50%", bottom: 28, transform: "translateX(-50%)",

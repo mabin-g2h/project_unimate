@@ -23,9 +23,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/verify-email?error=expired', request.url));
   }
 
+  // Students get a 48-hour window to complete the registration form; if they
+  // never submit, the no-form account is purged (cron + inline-on-signup) so the
+  // email is freed to register again. Admins never get a deadline.
+  const formDeadline =
+    user.role === 'student' ? new Date(Date.now() + 48 * 60 * 60 * 1000) : null;
+
   await sql`
     UPDATE users
-    SET email_verified = true, verification_token = NULL, verification_expires = NULL
+    SET email_verified = true, verification_token = NULL, verification_expires = ${formDeadline}
     WHERE id = ${user.id}
   `;
 

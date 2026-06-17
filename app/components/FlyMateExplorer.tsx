@@ -252,12 +252,13 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
             onClick={e => e.stopPropagation()}
             style={{
               position: "absolute", left: 0, top: 0, bottom: 0, width: 300,
-              background: "var(--paper)", overflowY: "auto", padding: "24px 20px",
+              background: "var(--paper)", overflowY: "auto",
+              padding: "max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left))",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.1rem" }}>Filters</span>
-              <button onClick={() => setFiltersOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-soft)", fontSize: "1.3rem", lineHeight: 1, padding: 4 }}>✕</button>
+              <button onClick={() => setFiltersOpen(false)} aria-label="Close filters" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-soft)", fontSize: "1.3rem", lineHeight: 1, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", margin: "-4px -8px -4px 0" }}>✕</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {filterControls}

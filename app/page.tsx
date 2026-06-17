@@ -236,7 +236,7 @@ export default function Home() {
         />
       )}
 
-      <Toast toasts={toasts} onRemove={() => {}} />
+      <Toast toasts={toasts} />
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }

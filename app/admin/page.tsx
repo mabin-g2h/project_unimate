@@ -901,7 +901,7 @@ export default function AdminPage() {
           </>
         )}
       </div>
-      <Toast toasts={toasts} onRemove={() => {}} />
+      <Toast toasts={toasts} />
     </>
   );
 }
