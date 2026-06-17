@@ -97,6 +97,10 @@ export async function POST(request: NextRequest) {
     )
   `;
 
+  // Form submitted — clear the 48-hour registration deadline so the account is
+  // never purged by the abandoned-account cleanup.
+  await sql`UPDATE users SET verification_expires = NULL WHERE id = ${session.userId}`;
+
   await sendRegistrationAcknowledgement(session.email, fullName);
 
   const adminEmail = process.env.ADMIN_EMAIL;

@@ -15,7 +15,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
     }
 
-    await sql`DELETE FROM users WHERE email_verified = false AND verification_expires < NOW()`;
+    // Purge abandoned student accounts (expired verification link, or verified
+    // but no registration form submitted within the 48-hour window) so this
+    // email can register fresh. Submitted profiles + admins have
+    // verification_expires = NULL, so they never match.
+    await sql`
+      DELETE FROM users
+      WHERE role = 'student'
+        AND verification_expires IS NOT NULL
+        AND verification_expires < NOW()
+        AND NOT EXISTS (SELECT 1 FROM student_profiles sp WHERE sp.user_id = users.id)
+    `;
 
     const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;
     if (existing.length > 0) {

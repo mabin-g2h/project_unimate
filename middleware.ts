@@ -8,6 +8,12 @@ const PUBLIC = ['/login', '/verify-email', '/accept-invite', '/forgot-password',
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Allow public static assets from /public (logo, svgs, etc.) — otherwise
+  // unauthenticated pages (login, forgot-password…) get the image redirected to /login.
+  if (/\.(?:png|jpe?g|gif|svg|webp|ico|txt|xml|woff2?)$/i.test(pathname)) {
+    return NextResponse.next();
+  }
+
   if (PUBLIC.some(p => pathname.startsWith(p))) return NextResponse.next();
 
   const token = request.cookies.get('auth-token')?.value;
