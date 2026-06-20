@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
     const passwordHash = await bcrypt.hash(password, 12);
     const verificationToken = randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 12 * 60 * 60 * 1000);
-    const role = email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'admin' : 'student';
+    const adminEmails = (process.env.ADMIN_EMAIL ?? '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'student';
 
     await sql`
       INSERT INTO users (email, password_hash, verification_token, verification_expires, role)
