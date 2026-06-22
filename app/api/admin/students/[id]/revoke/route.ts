@@ -56,9 +56,9 @@ export async function POST(
 
   if (student?.email && student?.full_name) {
     if (action === 'revoke') {
-      sendRevokeEmail(student.email as string, student.full_name as string, sanitisedReason!).catch(() => {});
+      try { await sendRevokeEmail(student.email as string, student.full_name as string, sanitisedReason!); } catch { /* email failure doesn't block the revoke */ }
     } else {
-      sendUnrevokeEmail(student.email as string, student.full_name as string).catch(() => {});
+      try { await sendUnrevokeEmail(student.email as string, student.full_name as string); } catch { /* email failure doesn't block the unrevoke */ }
     }
   }
 
