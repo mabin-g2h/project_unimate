@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import { sql } from '@/lib/db';
+import { archiveExpiredStudents } from '@/lib/archive';
 
 export async function GET(request: Request) {
   const incoming = request.headers.get('authorization')?.replace('Bearer ', '') ?? '';
@@ -27,5 +28,9 @@ export async function GET(request: Request) {
     SELECT COUNT(*)::int AS n FROM removed
   `;
 
-  return Response.json({ deleted: deleted[0]?.n ?? 0 });
+  // Archive approved students whose access has expired (course_start_date + lifespan).
+  // Folded into this existing daily cron to avoid adding a second Vercel cron job.
+  const archived = await archiveExpiredStudents();
+
+  return Response.json({ deleted: deleted[0]?.n ?? 0, archived });
 }

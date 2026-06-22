@@ -217,6 +217,44 @@ export async function sendNewPeerNotificationEmail(to: string, newStudentName: s
   });
 }
 
+export async function sendRevokeEmail(to: string, name: string, reason: string) {
+  await transporter.sendMail({
+    from: `"UniMate" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: 'Your UniMate access has been suspended — UniMate',
+    html: wrap(`
+      <h2 style="color:#1D1D1F;font-size:22px;font-weight:800;margin:0 0 12px;">Your access has been suspended, ${escapeHtml(name.split(' ')[0])}</h2>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.6;margin:0 0 20px;">
+        Your UniMate account has been temporarily suspended by our team. You will not be able to log in or access the FlyMate dashboard until your access is restored.
+      </p>
+      <div style="background:#FBE2D8;border-radius:12px;padding:20px;margin-bottom:24px;border-left:4px solid ${CORAL};">
+        <p style="color:#C9421F;font-weight:700;font-size:14px;margin:0 0 8px;">Reason for suspension</p>
+        <p style="color:#C9421F;font-size:14px;margin:0;">${escapeHtml(reason)}</p>
+      </div>
+      <p style="color:#8E8E93;font-size:13px;margin:0;">If you believe this is a mistake, please contact our support team.</p>
+    `),
+  });
+}
+
+export async function sendUnrevokeEmail(to: string, name: string) {
+  const url = `${process.env.APP_URL}/`;
+  await transporter.sendMail({
+    from: `"UniMate" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: 'Your UniMate access has been restored — UniMate',
+    html: wrap(`
+      <h2 style="color:#1D1D1F;font-size:22px;font-weight:800;margin:0 0 12px;">Your access has been restored, ${escapeHtml(name.split(' ')[0])}!</h2>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.6;margin:0 0 28px;">
+        Your UniMate account has been reactivated. You can now log in and access your FlyMate dashboard again.
+      </p>
+      <a href="${url}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-bottom:24px;">
+        Go to Dashboard
+      </a>
+      <p style="color:#8E8E93;font-size:13px;margin:16px 0 0;">Welcome back to UniMate!</p>
+    `),
+  });
+}
+
 export async function sendRejectionEmail(to: string, name: string, reason: string) {
   const url = `${process.env.APP_URL}/login`;
   await transporter.sendMail({
@@ -238,6 +276,24 @@ export async function sendRejectionEmail(to: string, name: string, reason: strin
       <a href="${url}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
         Log In to Re-apply
       </a>
+    `),
+  });
+}
+
+export async function sendAccountExpiredEmail(to: string, name: string) {
+  await transporter.sendMail({
+    from: `"UniMate" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: 'Your UniMate access has ended',
+    html: wrap(`
+      <h2 style="color:#1D1D1F;font-size:22px;font-weight:800;margin:0 0 12px;">Your FlyMate journey has wrapped up</h2>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.6;margin:0 0 20px;">
+        Hi ${name.split(' ')[0]}, now that your course is well underway, your UniMate FlyMate dashboard access has ended and your account has been archived.
+      </p>
+      <p style="color:#6E6E73;font-size:14px;line-height:1.6;margin:0 0 20px;">
+        We hope UniMate helped you connect with fellow students on your way to campus. Wishing you all the best for the year ahead! 🎓
+      </p>
+      <p style="color:#8E8E93;font-size:13px;margin:0;">Thank you for being part of the UniMate community.</p>
     `),
   });
 }

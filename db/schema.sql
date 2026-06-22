@@ -32,7 +32,7 @@ CREATE TABLE student_profiles (
   passport_url          TEXT,           -- full Vercel Blob URL; deleted from Blob after admin review
   admission_letter_url  TEXT,
   profile_picture_url   TEXT,
-  status                VARCHAR(20) DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected' | 'revoked'
+  status                VARCHAR(20) DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected' | 'revoked' | 'archived'
   submitted_at          TIMESTAMPTZ DEFAULT NOW(),
   reviewed_at           TIMESTAMPTZ,
   reviewed_by           INTEGER REFERENCES users(id),
@@ -40,7 +40,11 @@ CREATE TABLE student_profiles (
   share_phone           BOOLEAN DEFAULT false,          -- student opt-in to share phone with peers
   consented_at          TIMESTAMPTZ,                     -- set at registration; NULL = no consent recorded
   city                  VARCHAR(255),                    -- destination city abroad; powers same-city peer discovery; NULL for pre-feature profiles
-  gender                VARCHAR(10)                      -- 'Male' | 'Female'; required at registration; admin-visible only
+  gender                VARCHAR(10),                     -- 'Male' | 'Female'; required at registration; admin-visible only
+  revoke_reason         TEXT,                            -- set when status changes to 'revoked'; cleared to NULL on unrevoke
+  course_start_date     DATE,                            -- admin-entered at review; mandatory to approve; NULL otherwise
+  expiry_date           DATE,                            -- snapshot = course_start_date + ACCOUNT_LIFESPAN_DAYS; drives the archive sweep
+  archived_at           TIMESTAMPTZ                      -- set when status changes to 'archived' (access expired); admin-only thereafter
 );
 
 CREATE TABLE flight_details (
@@ -188,3 +192,19 @@ CREATE TABLE cities (
 -- form (admins get NULL). Submitting the form clears it (NULL). Abandoned
 -- no-form student accounts (verification_expires < NOW(), no student_profiles
 -- row) are purged by the daily cron + inline on next signup, freeing the email.
+
+-- Migration 014 — revoke reason
+-- ALTER TABLE student_profiles ADD COLUMN revoke_reason TEXT;
+
+-- Migration 015 — account expiry + archive
+-- Admin sets course_start_date at review (mandatory to approve); expiry_date is
+-- snapshotted as course_start_date + ACCOUNT_LIFESPAN_DAYS (default 30). When the
+-- expiry passes, the daily cron / admin "Archive expired students" button flips
+-- status 'approved' → 'archived', stamps archived_at, and emails the student.
+-- Archived students are hidden from peers (queries already filter status='approved').
+-- status needs no DDL — 'archived' is just a new VARCHAR value (like 'revoked').
+-- ALTER TABLE student_profiles ADD COLUMN IF NOT EXISTS course_start_date DATE;
+-- ALTER TABLE student_profiles ADD COLUMN IF NOT EXISTS expiry_date       DATE;
+-- ALTER TABLE student_profiles ADD COLUMN IF NOT EXISTS archived_at       TIMESTAMPTZ;
+-- CREATE INDEX IF NOT EXISTS idx_student_profiles_expiry
+--   ON student_profiles (expiry_date) WHERE status = 'approved';

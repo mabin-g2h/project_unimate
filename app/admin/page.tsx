@@ -4,13 +4,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLogo from '@/app/components/AppLogo';
 import Toast, { useToast } from '@/app/components/Toast';
+import RevokeModal from '@/app/components/RevokeModal';
 import { COUNTRIES } from '@/lib/countries';
+import { computeExpiry, isValidDateString } from '@/lib/account';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
 const GENDERS = ['Male', 'Female'];
 const YEARS = [2024, 2025, 2026, 2027];
 const OTHER = '__other__';
+// Neon returns PostgreSQL DATE columns as JS Date objects at runtime.
+// <input type="date"> needs a YYYY-MM-DD string; Date.toString() doesn't work.
+// Uses local-time methods so the date matches the admin's browser timezone.
+function normDate(val: string | null): string {
+  if (!val) return '';
+  const d = val as unknown as Date;
+  if (d instanceof Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return val.slice(0, 10);
+}
 const inp: React.CSSProperties = {
   width: '100%', fontFamily: 'var(--font-body)', fontSize: '.9rem', color: 'var(--ink)',
   background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 10,
@@ -25,7 +38,8 @@ interface Student {
   course_name: string | null; intake_month: string | null; intake_year: number | null;
   passport_url: string | null; admission_letter_url: string | null; profile_picture_url: string | null;
   status: string | null; submitted_at: string | null; rejection_reason: string | null;
-  city: string | null; gender: string | null;
+  city: string | null; gender: string | null; revoke_reason: string | null;
+  course_start_date: string | null; expiry_date: string | null; archived_at: string | null;
 }
 
 interface EditFormState {
@@ -33,7 +47,7 @@ interface EditFormState {
   country_of_origin: string; country_of_education: string;
   university_name: string; degree_level: string;
   course_name: string; intake_month: string; intake_year: string;
-  city: string; gender: string;
+  city: string; gender: string; course_start_date: string;
 }
 
 interface University { id: number; name: string; country: string | null; }
@@ -48,11 +62,12 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   approved: { bg: '#D1FAE5', color: '#065F46' },
   rejected: { bg: '#FBE2D8', color: '#C9421F' },
   revoked:  { bg: '#F3F4F6', color: '#374151' },
+  archived: { bg: '#E5E7EB', color: '#4B5563' },
 };
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<'students' | 'dropdowns' | 'admins'>('students');
+  const [tab, setTab] = useState<'students' | 'dropdowns' | 'admins' | 'archives'>('students');
 
   // ── Students tab state ────────────────────────────────────────────────────
   const [students, setStudents] = useState<Student[]>([]);
@@ -63,6 +78,8 @@ export default function AdminPage() {
   const [actionError, setActionError] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'revoked'>('all');
   const [search, setSearch] = useState('');
+  const [revokeTarget, setRevokeTarget] = useState<Student | null>(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
 
   // ── Edit form state (review modal) ────────────────────────────────────────
   const { toasts, showToast } = useToast();
@@ -197,6 +214,7 @@ export default function AdminPage() {
       course_name: s.course_name ?? '', intake_month: s.intake_month ?? '',
       intake_year: s.intake_year != null ? String(s.intake_year) : '',
       city: s.city ?? '', gender: s.gender ?? '',
+      course_start_date: normDate(s.course_start_date),
     });
   }
 
@@ -249,11 +267,14 @@ export default function AdminPage() {
     if (action === 'reject' && !rejectionReason.trim()) {
       setActionError('Please enter a rejection reason.'); return;
     }
+    if (action === 'approve' && !isValidDateString(editForm?.course_start_date)) {
+      setActionError('Set the course start date before approving.'); return;
+    }
     setActionLoading(true); setActionError('');
     const res = await fetch(`/api/admin/students/${selected.profile_id}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, rejection_reason: rejectionReason }),
+      body: JSON.stringify({ action, rejection_reason: rejectionReason, course_start_date: editForm?.course_start_date }),
     });
     const data = await res.json();
     setActionLoading(false);
@@ -264,18 +285,46 @@ export default function AdminPage() {
 
   async function handleRevoke(student: Student, action: 'revoke' | 'unrevoke') {
     if (!student.profile_id) return;
-    const verb = action === 'revoke' ? 'revoke' : 'restore';
-    if (!confirm(`Are you sure you want to ${verb} access for ${student.full_name ?? 'this student'}?`)) return;
+    if (action === 'revoke') { setRevokeTarget(student); return; }
+    if (!confirm(`Are you sure you want to restore access for ${student.full_name ?? 'this student'}?`)) return;
     const res = await fetch(`/api/admin/students/${student.profile_id}/revoke`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action: 'unrevoke' }),
     });
     const data = await res.json();
-    if (!res.ok) { alert(data.error ?? 'Action failed. Please try again.'); return; }
+    if (!res.ok) { showToast('Error', data.error ?? 'Action failed. Please try again.'); return; }
     setStudents(prev => prev.map(s =>
-      s.profile_id === student.profile_id ? { ...s, status: data.newStatus } : s
+      s.profile_id === student.profile_id ? { ...s, status: data.newStatus, revoke_reason: null } : s
     ));
+  }
+
+  async function confirmRevoke(reason: string) {
+    if (!revokeTarget?.profile_id) return;
+    const res = await fetch(`/api/admin/students/${revokeTarget.profile_id}/revoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'revoke', reason }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? 'Action failed.');
+    setStudents(prev => prev.map(s =>
+      s.profile_id === revokeTarget.profile_id ? { ...s, status: data.newStatus, revoke_reason: reason } : s
+    ));
+    setRevokeTarget(null);
+  }
+
+  async function handleArchiveExpired() {
+    if (!confirm('Archive all approved students whose access has expired? They will lose dashboard access and be notified by email.')) return;
+    setArchiveLoading(true);
+    const res = await fetch('/api/admin/students/archive-expired', { method: 'POST' });
+    const data = await res.json();
+    setArchiveLoading(false);
+    if (!res.ok) { showToast('Error', data.error ?? 'Failed to archive expired students.'); return; }
+    showToast('Archive complete', data.archived > 0
+      ? `${data.archived} expired ${data.archived === 1 ? 'student' : 'students'} archived.`
+      : 'No expired students to archive.');
+    load();
   }
 
   async function handleLogout() {
@@ -385,7 +434,9 @@ export default function AdminPage() {
     loadAdmins();
   }
 
+  // Archived students live in their own tab — keep them out of the applications list.
   const filtered = students.filter(s => {
+    if (s.status === 'archived') return false;
     if (filter !== 'all' && (s.status ?? 'no_profile') !== filter) return false;
     if (search) {
       const hay = `${s.full_name ?? ''} ${s.email} ${s.university_name ?? ''}`.toLowerCase();
@@ -394,12 +445,15 @@ export default function AdminPage() {
     return true;
   });
 
+  const archivedStudents = students.filter(s => s.status === 'archived');
+
   const counts = {
-    all: students.length,
+    all: students.filter(s => s.status !== 'archived').length,
     pending: students.filter(s => s.status === 'pending').length,
     approved: students.filter(s => s.status === 'approved').length,
     rejected: students.filter(s => s.status === 'rejected').length,
     revoked: students.filter(s => s.status === 'revoked').length,
+    archived: archivedStudents.length,
   };
 
   return (
@@ -549,6 +603,16 @@ export default function AdminPage() {
                             {YEARS.map(y => <option key={y} value={String(y)}>{y}</option>)}
                           </select>
                         </ModalEditField>
+
+                        <ModalEditField label="Course start date (required to approve)">
+                          <input type="date" style={inp} value={editForm.course_start_date}
+                            onChange={e => { setEditForm(f => f ? { ...f, course_start_date: e.target.value } : f); setIsDirty(true); }} />
+                          {isValidDateString(editForm.course_start_date) && (
+                            <span style={{ display: 'inline-block', marginTop: 6, fontSize: 12, fontWeight: 700, color: 'var(--teal-deep)', background: 'var(--teal-tint)', padding: '3px 10px', borderRadius: 999 }}>
+                              Access expires {new Date(`${computeExpiry(editForm.course_start_date)}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                            </span>
+                          )}
+                        </ModalEditField>
                       </div>
 
                       <Detail label="Status" value={
@@ -626,6 +690,14 @@ export default function AdminPage() {
                       </div>
                     </div>
                   )}
+                  {selected.status === 'revoked' && selected.revoke_reason && (
+                    <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line-soft)' }}>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '.82rem', marginBottom: 6 }}>Reason for revocation</label>
+                      <div style={{ background: '#FBE2D8', borderRadius: 10, padding: '10px 14px', color: '#C9421F', fontSize: '.88rem', lineHeight: 1.5, borderLeft: '3px solid var(--coral)' }}>
+                        {selected.revoke_reason}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem' }}>This student has not submitted a registration form yet.</p>
@@ -633,6 +705,14 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {revokeTarget && (
+        <RevokeModal
+          student={revokeTarget}
+          onClose={() => setRevokeTarget(null)}
+          onConfirm={confirmRevoke}
+        />
       )}
 
       {/* Main */}
@@ -651,7 +731,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, borderBottom: '1px solid var(--line-soft)', paddingBottom: 0 }}>
-          {([['students', 'Student Applications'], ['dropdowns', 'Manage Dropdowns'], ['admins', 'Manage Admins']] as const).map(([key, label]) => (
+          {([['students', 'Student Applications'], ['archives', 'Archives'], ['dropdowns', 'Manage Dropdowns'], ['admins', 'Manage Admins']] as const).map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -671,14 +751,18 @@ export default function AdminPage() {
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-.03em', marginBottom: 6 }}>Student Applications</h1>
             <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Review submitted profiles and approve or reject students.</p>
 
-            <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 24 }}>
-              {([['all','Total',undefined],['pending','Pending','#92400E'],['approved','Approved','var(--green)'],['rejected','Rejected','var(--coral-deep)'],['revoked','Revoked','#374151']] as const).map(([k, label, color]) => (
-                <div key={k} style={{ background: 'var(--paper)', border: '1px solid var(--line-soft)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', cursor: 'pointer', boxShadow: filter === k ? 'var(--shadow)' : 'none', borderColor: filter === k ? 'var(--teal)' : 'var(--line-soft)', transition: '.18s' }}
-                  onClick={() => setFilter(k)}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.6rem', color: color ?? 'var(--teal)', lineHeight: 1 }}>{counts[k]}</div>
-                  <div style={{ fontSize: '.78rem', color: 'var(--ink-soft)', fontWeight: 600, marginTop: 4 }}>{label}</div>
-                </div>
-              ))}
+            <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12, marginBottom: 24 }}>
+              {([['all','Total',undefined],['pending','Pending','#92400E'],['approved','Approved','var(--green)'],['rejected','Rejected','var(--coral-deep)'],['revoked','Revoked','#374151'],['archived','Archived','#6B7280']] as const).map(([k, label, color]) => {
+                // The Archived box jumps to the Archives tab; the rest filter this list.
+                const active = k === 'archived' ? false : filter === k;
+                return (
+                  <div key={k} style={{ background: 'var(--paper)', border: '1px solid var(--line-soft)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', cursor: 'pointer', boxShadow: active ? 'var(--shadow)' : 'none', borderColor: active ? 'var(--teal)' : 'var(--line-soft)', transition: '.18s' }}
+                    onClick={() => k === 'archived' ? setTab('archives') : setFilter(k)}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.6rem', color: color ?? 'var(--teal)', lineHeight: 1 }}>{counts[k]}</div>
+                    <div style={{ fontSize: '.78rem', color: 'var(--ink-soft)', fontWeight: 600, marginTop: 4 }}>{label}</div>
+                  </div>
+                );
+              })}
             </div>
 
             <div style={{ position: 'relative', marginBottom: 18 }}>
@@ -745,6 +829,65 @@ export default function AdminPage() {
                               </button>
                             )}
                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Archives tab ── */}
+        {tab === 'archives' && (
+          <>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-.03em', marginBottom: 6 }}>Archives</h1>
+            <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Students whose access has expired (course start + lifespan). They are hidden from peers and can no longer log in to the dashboard.</p>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+              <div style={{ fontSize: '.86rem', color: 'var(--ink-soft)' }}>
+                {archivedStudents.length} archived {archivedStudents.length === 1 ? 'student' : 'students'}
+              </div>
+              <button onClick={handleArchiveExpired} disabled={archiveLoading}
+                style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--coral)', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.86rem', cursor: archiveLoading ? 'wait' : 'pointer', opacity: archiveLoading ? 0.7 : 1 }}>
+                {archiveLoading ? 'Archiving…' : 'Archive expired students'}
+              </button>
+            </div>
+
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
+            ) : archivedStudents.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-soft)' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>📁</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--ink)' }}>No archived students</div>
+              </div>
+            ) : (
+              <div style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', border: '1px solid var(--line-soft)', overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+                <div className="admin-table-wrap">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--cream-2)' }}>
+                      {['Name', 'Email', 'University', 'Course start', 'Expired on', 'Archived', ''].map(h => (
+                        <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '.76rem', fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.08em', borderBottom: '1px solid var(--line)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archivedStudents.map((s, i) => (
+                      <tr key={s.user_id} style={{ borderBottom: i < archivedStudents.length - 1 ? '1px solid var(--line-soft)' : 'none' }}>
+                        <td style={{ padding: '14px 16px', fontWeight: 700, fontSize: '.9rem' }}>{s.full_name ?? '—'}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '.86rem', color: 'var(--ink-soft)' }}>{s.email}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '.86rem' }}>{s.university_name ?? '—'}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '.82rem', color: 'var(--ink-soft)' }}>{fmtDate(s.course_start_date)}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '.82rem', color: 'var(--ink-soft)' }}>{fmtDate(s.expiry_date)}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '.82rem', color: 'var(--ink-soft)' }}>{fmtDate(s.archived_at)}</td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <button onClick={() => openModal(s)}
+                            style={{ background: 'var(--cream-2)', color: 'var(--ink-soft)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 14px', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer' }}>
+                            View
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1045,6 +1188,16 @@ function Spinner() {
   return <div style={{ width: 32, height: 32, border: '3px solid var(--line)', borderTopColor: 'var(--teal)', borderRadius: '50%', animation: 'spin .8s linear infinite' }}>
     <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
   </div>;
+}
+
+// Formats a DATE ('YYYY-MM-DD') or TIMESTAMPTZ string for display, treating
+// date-only values as UTC so they don't shift across the local-timezone boundary.
+function fmtDate(value: string | null): string {
+  if (!value) return '—';
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 const badge: React.CSSProperties = {

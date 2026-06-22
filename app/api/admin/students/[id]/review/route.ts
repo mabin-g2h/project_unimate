@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendApprovalEmail, sendRejectionEmail, sendNewPeerNotificationEmail } from '@/lib/email';
+import { computeExpiry, isValidDateString } from '@/lib/account';
 import { del } from '@vercel/blob';
 
 export const runtime = 'nodejs';
@@ -50,12 +51,15 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { action, rejection_reason } = await request.json();
+  const { action, rejection_reason, course_start_date } = await request.json();
   if (!['approve', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
   if (action === 'reject' && !rejection_reason?.trim()) {
     return NextResponse.json({ error: 'Rejection reason is required.' }, { status: 400 });
+  }
+  if (action === 'approve' && !isValidDateString(course_start_date)) {
+    return NextResponse.json({ error: 'A valid course start date is required to approve.' }, { status: 400 });
   }
 
   const { id } = await params;
@@ -70,12 +74,16 @@ export async function POST(
   if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
 
   const status = action === 'approve' ? 'approved' : 'rejected';
+  const startDate = action === 'approve' ? course_start_date : null;
+  const expiry = action === 'approve' ? computeExpiry(course_start_date) : null;
   await sql`
     UPDATE student_profiles
     SET status = ${status},
         reviewed_at = NOW(),
         reviewed_by = ${session.userId},
-        rejection_reason = ${rejection_reason ?? null}
+        rejection_reason = ${rejection_reason ?? null},
+        course_start_date = ${startDate},
+        expiry_date = ${expiry}
     WHERE id = ${profileId}
   `;
 

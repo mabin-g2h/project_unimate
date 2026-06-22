@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
+import { computeExpiry, isValidDateString } from '@/lib/account';
 
 export const runtime = 'nodejs';
 
@@ -37,6 +38,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Intake year must be between 2024 and 2035.' }, { status: 400 });
   }
 
+  // Course start date drives the account expiry: changing it re-snapshots expiry_date.
+  let courseStartDate: string | null = null;
+  let expiryDate: string | null = null;
+  if (body.course_start_date) {
+    if (!isValidDateString(body.course_start_date))
+      return NextResponse.json({ error: 'Invalid course start date.' }, { status: 400 });
+    courseStartDate = body.course_start_date;
+    expiryDate = computeExpiry(body.course_start_date);
+  }
+
   await sql`
     UPDATE student_profiles
     SET
@@ -50,13 +61,16 @@ export async function PATCH(
       intake_month         = ${body.intake_month ?? null},
       intake_year          = ${body.intake_year ? parseInt(body.intake_year, 10) : null},
       city                 = ${body.city ?? null},
-      gender               = ${body.gender ?? null}
+      gender               = ${body.gender ?? null},
+      course_start_date    = ${courseStartDate},
+      expiry_date          = ${expiryDate}
     WHERE id = ${profileId}
   `;
 
   const [updated] = await sql`
     SELECT id AS profile_id, full_name, phone, country_of_origin, country_of_education,
-           university_name, degree_level, course_name, intake_month, intake_year, city, gender, status
+           university_name, degree_level, course_name, intake_month, intake_year, city, gender, status,
+           course_start_date, expiry_date
     FROM student_profiles
     WHERE id = ${profileId}
   `;

@@ -34,6 +34,7 @@ export default function PendingPage() {
 
   const isRevoked = user?.registration_status === 'revoked';
   const isRejected = user?.registration_status === 'rejected';
+  const isArchived = user?.registration_status === 'archived';
 
   return (
     <Screen>
@@ -45,13 +46,25 @@ export default function PendingPage() {
         </div>
 
         <div className="content-card" style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line-soft)', padding: '40px 36px' }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>{isRevoked ? '🔒' : isRejected ? '❌' : '⏳'}</div>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>{isArchived ? '📁' : isRevoked ? '🔒' : isRejected ? '❌' : '⏳'}</div>
 
           <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', letterSpacing: '-.02em', marginBottom: 10 }}>
-            {isRevoked ? 'Access Suspended' : isRejected ? 'Application Not Approved' : 'Application Under Review'}
+            {isArchived ? 'Access Ended' : isRevoked ? 'Access Suspended' : isRejected ? 'Application Not Approved' : 'Application Under Review'}
           </h2>
 
-          {isRevoked ? (
+          {isArchived ? (
+            <>
+              <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', lineHeight: 1.6, marginBottom: 20 }}>
+                Hi {user?.full_name?.split(' ')[0]}, now that your course is well underway, your UniMate FlyMate access has ended and your account has been archived.
+              </p>
+              <div style={{ background: '#F3F4F6', border: '1px solid #D1D5DB', borderRadius: 12, padding: '16px', marginBottom: 24, textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: '.82rem', color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Thank you</div>
+                <div style={{ color: '#374151', fontSize: '.9rem', lineHeight: 1.5 }}>
+                  We hope UniMate helped you connect with fellow students on your way to campus. Wishing you all the best for the year ahead! 🎓
+                </div>
+              </div>
+            </>
+          ) : isRevoked ? (
             <>
               <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', lineHeight: 1.6, marginBottom: 20 }}>
                 Hi {user?.full_name?.split(' ')[0]}, your access to UniMate has been suspended by an administrator.
