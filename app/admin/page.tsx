@@ -47,6 +47,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   pending:  { bg: '#FEF3C7', color: '#92400E' },
   approved: { bg: '#D1FAE5', color: '#065F46' },
   rejected: { bg: '#FBE2D8', color: '#C9421F' },
+  revoked:  { bg: '#F3F4F6', color: '#374151' },
 };
 
 export default function AdminPage() {
@@ -60,7 +61,7 @@ export default function AdminPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'revoked'>('all');
   const [search, setSearch] = useState('');
 
   // ── Edit form state (review modal) ────────────────────────────────────────
@@ -261,6 +262,22 @@ export default function AdminPage() {
     load();
   }
 
+  async function handleRevoke(student: Student, action: 'revoke' | 'unrevoke') {
+    if (!student.profile_id) return;
+    const verb = action === 'revoke' ? 'revoke' : 'restore';
+    if (!confirm(`Are you sure you want to ${verb} access for ${student.full_name ?? 'this student'}?`)) return;
+    const res = await fetch(`/api/admin/students/${student.profile_id}/revoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error ?? 'Action failed. Please try again.'); return; }
+    setStudents(prev => prev.map(s =>
+      s.profile_id === student.profile_id ? { ...s, status: data.newStatus } : s
+    ));
+  }
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
@@ -382,6 +399,7 @@ export default function AdminPage() {
     pending: students.filter(s => s.status === 'pending').length,
     approved: students.filter(s => s.status === 'approved').length,
     rejected: students.filter(s => s.status === 'rejected').length,
+    revoked: students.filter(s => s.status === 'revoked').length,
   };
 
   return (
@@ -653,8 +671,8 @@ export default function AdminPage() {
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-.03em', marginBottom: 6 }}>Student Applications</h1>
             <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Review submitted profiles and approve or reject students.</p>
 
-            <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
-              {([['all','Total',undefined],['pending','Pending','#92400E'],['approved','Approved','var(--green)'],['rejected','Rejected','var(--coral-deep)']] as const).map(([k, label, color]) => (
+            <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 24 }}>
+              {([['all','Total',undefined],['pending','Pending','#92400E'],['approved','Approved','var(--green)'],['rejected','Rejected','var(--coral-deep)'],['revoked','Revoked','#374151']] as const).map(([k, label, color]) => (
                 <div key={k} style={{ background: 'var(--paper)', border: '1px solid var(--line-soft)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', cursor: 'pointer', boxShadow: filter === k ? 'var(--shadow)' : 'none', borderColor: filter === k ? 'var(--teal)' : 'var(--line-soft)', transition: '.18s' }}
                   onClick={() => setFilter(k)}>
                   <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.6rem', color: color ?? 'var(--teal)', lineHeight: 1 }}>{counts[k]}</div>
@@ -709,10 +727,24 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td style={{ padding: '14px 16px' }}>
-                          <button onClick={() => openModal(s)}
-                            style={{ background: 'var(--teal-tint)', color: 'var(--teal-deep)', border: 'none', borderRadius: 8, padding: '7px 14px', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer' }}>
-                            Review →
-                          </button>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <button onClick={() => openModal(s)}
+                              style={{ background: 'var(--teal-tint)', color: 'var(--teal-deep)', border: 'none', borderRadius: 8, padding: '7px 14px', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer' }}>
+                              Review →
+                            </button>
+                            {s.status === 'approved' && (
+                              <button onClick={() => handleRevoke(s, 'revoke')}
+                                style={{ background: '#FBE2D8', color: '#C9421F', border: 'none', borderRadius: 8, padding: '7px 14px', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer' }}>
+                                Revoke
+                              </button>
+                            )}
+                            {s.status === 'revoked' && (
+                              <button onClick={() => handleRevoke(s, 'unrevoke')}
+                                style={{ background: 'var(--teal-tint)', color: 'var(--teal-deep)', border: 'none', borderRadius: 8, padding: '7px 14px', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.8rem', cursor: 'pointer' }}>
+                                Unrevoke
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

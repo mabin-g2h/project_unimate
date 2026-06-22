@@ -32,6 +32,7 @@ export default function PendingPage() {
 
   if (loading) return <Screen><Spinner /></Screen>;
 
+  const isRevoked = user?.registration_status === 'revoked';
   const isRejected = user?.registration_status === 'rejected';
 
   return (
@@ -44,13 +45,25 @@ export default function PendingPage() {
         </div>
 
         <div className="content-card" style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line-soft)', padding: '40px 36px' }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>{isRejected ? '❌' : '⏳'}</div>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>{isRevoked ? '🔒' : isRejected ? '❌' : '⏳'}</div>
 
           <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', letterSpacing: '-.02em', marginBottom: 10 }}>
-            {isRejected ? 'Application Not Approved' : 'Application Under Review'}
+            {isRevoked ? 'Access Suspended' : isRejected ? 'Application Not Approved' : 'Application Under Review'}
           </h2>
 
-          {isRejected ? (
+          {isRevoked ? (
+            <>
+              <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', lineHeight: 1.6, marginBottom: 20 }}>
+                Hi {user?.full_name?.split(' ')[0]}, your access to UniMate has been suspended by an administrator.
+              </p>
+              <div style={{ background: '#F3F4F6', border: '1px solid #D1D5DB', borderRadius: 12, padding: '16px', marginBottom: 24, textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: '.82rem', color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>What to do</div>
+                <div style={{ color: '#374151', fontSize: '.9rem', lineHeight: 1.5 }}>
+                  If you believe this is a mistake, please contact the UniMate admin team for assistance.
+                </div>
+              </div>
+            </>
+          ) : isRejected ? (
             <>
               <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', lineHeight: 1.6, marginBottom: 20 }}>
                 Hi {user?.full_name?.split(' ')[0]}, your application was not approved at this time.

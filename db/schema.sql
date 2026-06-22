@@ -32,7 +32,7 @@ CREATE TABLE student_profiles (
   passport_url          TEXT,           -- full Vercel Blob URL; deleted from Blob after admin review
   admission_letter_url  TEXT,
   profile_picture_url   TEXT,
-  status                VARCHAR(20) DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected'
+  status                VARCHAR(20) DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected' | 'revoked'
   submitted_at          TIMESTAMPTZ DEFAULT NOW(),
   reviewed_at           TIMESTAMPTZ,
   reviewed_by           INTEGER REFERENCES users(id),
