@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { signToken, makeSessionCookieOptions } from '@/lib/auth';
+import { log } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
@@ -15,10 +16,12 @@ export async function GET(request: NextRequest) {
   `;
 
   if (!user) {
+    log({ level: 'warn', event: 'verification_link_invalid', message: 'Email verification link invalid or already used', route: '/api/auth/verify-email' });
     return NextResponse.redirect(new URL('/verify-email?error=invalid', request.url));
   }
 
   if (new Date(user.verification_expires) < new Date()) {
+    log({ level: 'warn', event: 'verification_link_expired', message: 'Email verification link expired', email: user.email, userId: user.id, route: '/api/auth/verify-email' });
     await sql`DELETE FROM users WHERE id = ${user.id}`;
     return NextResponse.redirect(new URL('/verify-email?error=expired', request.url));
   }

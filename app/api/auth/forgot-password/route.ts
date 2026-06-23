@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { sql } from '@/lib/db';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { log } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,8 +24,9 @@ export async function POST(request: NextRequest) {
         WHERE id = ${user.id}
       `;
 
-      // fire-and-forget
-      sendPasswordResetEmail(email, token).catch(() => {});
+      sendPasswordResetEmail(email, token).catch((err) => {
+        log({ level: 'error', event: 'email_send_failed', message: 'Password reset email could not be sent', email: (email as string).toLowerCase(), userId: user.id, route: '/api/auth/forgot-password', metadata: { error: String(err) } });
+      });
     }
 
     // Always return 200 to prevent email enumeration

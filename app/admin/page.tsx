@@ -67,7 +67,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<'students' | 'dropdowns' | 'admins' | 'archives'>('students');
+  const [tab, setTab] = useState<'students' | 'dropdowns' | 'admins' | 'archives' | 'logs'>('students');
 
   // ── Students tab state ────────────────────────────────────────────────────
   const [students, setStudents] = useState<Student[]>([]);
@@ -116,6 +116,14 @@ export default function AdminPage() {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  // ── Logs tab state ────────────────────────────────────────────────────────
+  interface LogRow { id: string; level: string; event: string; message: string; email: string | null; route: string | null; metadata: Record<string, unknown> | null; created_at: string; }
+  const [logs, setLogs] = useState<LogRow[]>([]);
+  const [logsTotal, setLogsTotal] = useState(0);
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsEmail, setLogsEmail] = useState('');
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/students');
@@ -195,6 +203,29 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (tab === 'admins') loadAdmins();
   }, [tab, loadAdmins]);
+
+  const loadLogs = useCallback(async (email = '', page = 1) => {
+    setLogsLoading(true);
+    const params = new URLSearchParams({ page: String(page) });
+    if (email) params.set('email', email);
+    const res = await fetch(`/api/admin/logs?${params}`);
+    const data = await res.json();
+    setLogs(data.logs ?? []);
+    setLogsTotal(data.total ?? 0);
+    setLogsPage(page);
+    setLogsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === 'logs') loadLogs();
+  }, [tab, loadLogs]);
+
+  useEffect(() => {
+    if (tab !== 'logs') return;
+    const id = setInterval(() => loadLogs(logsEmail, logsPage), 30_000);
+    return () => clearInterval(id);
+  }, [tab, logsEmail, logsPage, loadLogs]);
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
@@ -731,7 +762,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, borderBottom: '1px solid var(--line-soft)', paddingBottom: 0 }}>
-          {([['students', 'Student Applications'], ['archives', 'Archives'], ['dropdowns', 'Manage Dropdowns'], ['admins', 'Manage Admins']] as const).map(([key, label]) => (
+          {([['students', 'Student Applications'], ['archives', 'Archives'], ['dropdowns', 'Manage Dropdowns'], ['admins', 'Manage Admins'], ['logs', 'Logs']] as const).map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -895,6 +926,102 @@ export default function AdminPage() {
                 </table>
                 </div>
               </div>
+            )}
+          </>
+        )}
+
+        {/* ── Logs tab ── */}
+        {tab === 'logs' && (
+          <>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.8rem', letterSpacing: '-.03em', marginBottom: 6 }}>Logs</h1>
+            <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 24 }}>Student errors during registration, login, and email verification. Search by email to investigate a specific student.</p>
+
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Search by email…"
+                value={logsEmail}
+                onChange={e => setLogsEmail(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') loadLogs(logsEmail, 1); }}
+                style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: '.9rem', color: 'var(--ink)', background: 'var(--cream-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', outline: 'none', maxWidth: 320 }}
+              />
+              <button onClick={() => loadLogs(logsEmail, 1)} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--teal)', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.86rem', cursor: 'pointer' }}>
+                Search
+              </button>
+              {logsEmail && (
+                <button onClick={() => { setLogsEmail(''); loadLogs('', 1); }} style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--cream-2)', color: 'var(--ink-soft)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.86rem', cursor: 'pointer' }}>
+                  Clear
+                </button>
+              )}
+              <div style={{ fontSize: '.82rem', color: 'var(--ink-soft)', marginLeft: 4 }}>{logsTotal} {logsTotal === 1 ? 'entry' : 'entries'}</div>
+            </div>
+
+            {logsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
+            ) : logs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-soft)' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--ink)' }}>No errors logged</div>
+                <div style={{ fontSize: '.86rem', marginTop: 6 }}>{logsEmail ? 'No errors found for this email.' : 'No student errors have been recorded yet.'}</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ background: 'var(--paper)', borderRadius: 'var(--radius)', border: '1px solid var(--line-soft)', overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+                  <div className="admin-table-wrap">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--cream-2)' }}>
+                          {['Time', 'Event', 'Email', 'Message', 'Route'].map(h => (
+                            <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '.76rem', fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.08em', borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {logs.map((log, i) => {
+                          const eventBg    = log.level === 'error' ? 'var(--coral-tint, #FBE2D8)' : log.level === 'warn' ? '#FEF3C7' : '#EFF6FF';
+                          const eventColor = log.level === 'error' ? 'var(--coral-deep, #C9421F)' : log.level === 'warn' ? '#92400E'  : '#1D4ED8';
+                          const metaKeys = ['reason', 'field', 'detected_kind'];
+                          const metaPills = log.metadata ? Object.entries(log.metadata).filter(([k]) => metaKeys.includes(k)) : [];
+                          return (
+                            <tr key={log.id} style={{ borderBottom: i < logs.length - 1 ? '1px solid var(--line-soft)' : 'none' }}>
+                              <td style={{ padding: '12px 16px', fontSize: '.8rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap' }}>{fmtDateTime(log.created_at)}</td>
+                              <td style={{ padding: '12px 16px' }}>
+                                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '.76rem', fontWeight: 700, background: eventBg, color: eventColor, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>
+                                  {log.event}
+                                </span>
+                              </td>
+                              <td style={{ padding: '12px 16px', fontSize: '.86rem', color: 'var(--ink)' }}>{log.email ?? '—'}</td>
+                              <td style={{ padding: '12px 16px', fontSize: '.84rem', color: 'var(--ink-soft)', maxWidth: 300 }}>
+                                <div title={log.message} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.message}</div>
+                                {metaPills.length > 0 && (
+                                  <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                    {metaPills.map(([k, v]) => (
+                                      <span key={k} style={{ fontSize: '.7rem', background: 'var(--cream-2)', border: '1px solid var(--line-soft)', borderRadius: 4, padding: '1px 6px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--ink-soft)' }}>
+                                        {k}: {String(v)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ padding: '12px 16px', fontSize: '.78rem', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, monospace)', whiteSpace: 'nowrap' }}>{log.route ?? '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {logsTotal > 25 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, fontSize: '.86rem', color: 'var(--ink-soft)' }}>
+                    <span>Page {logsPage} of {Math.ceil(logsTotal / 25)}</span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => loadLogs(logsEmail, logsPage - 1)} disabled={logsPage <= 1} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--cream-2)', color: logsPage <= 1 ? 'var(--ink-faint)' : 'var(--ink)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.82rem', cursor: logsPage <= 1 ? 'default' : 'pointer' }}>← Prev</button>
+                      <button onClick={() => loadLogs(logsEmail, logsPage + 1)} disabled={logsPage >= Math.ceil(logsTotal / 25)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--cream-2)', color: logsPage >= Math.ceil(logsTotal / 25) ? 'var(--ink-faint)' : 'var(--ink)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '.82rem', cursor: logsPage >= Math.ceil(logsTotal / 25) ? 'default' : 'pointer' }}>Next →</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -1198,6 +1325,15 @@ function fmtDate(value: string | null): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+// Formats a TIMESTAMPTZ string for display including hour and minute (browser local time).
+// Used for log entries where time-of-day matters.
+function fmtDateTime(value: string | null): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 const badge: React.CSSProperties = {

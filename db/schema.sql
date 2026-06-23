@@ -58,6 +58,25 @@ CREATE TABLE flight_details (
   updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ─── Student error log table ──────────────────────────────────────────────────
+-- Records errors students hit during registration, verification, and login.
+-- email is plain text (not a FK) — pre-account attempts have no users row yet.
+
+CREATE TABLE student_error_logs (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  level       VARCHAR(10) NOT NULL DEFAULT 'error',  -- 'error' | 'warn' | 'info'
+  event       VARCHAR(100) NOT NULL,
+  message     TEXT NOT NULL,
+  email       VARCHAR(255),
+  user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  route       VARCHAR(255),
+  metadata    JSONB,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX ON student_error_logs (created_at DESC);
+CREATE INDEX ON student_error_logs (email);
+CREATE INDEX ON student_error_logs (level, created_at DESC);
+
 -- ─── Admin invite table ───────────────────────────────────────────────────────
 
 CREATE TABLE admin_invites (
@@ -208,3 +227,27 @@ CREATE TABLE cities (
 -- ALTER TABLE student_profiles ADD COLUMN IF NOT EXISTS archived_at       TIMESTAMPTZ;
 -- CREATE INDEX IF NOT EXISTS idx_student_profiles_expiry
 --   ON student_profiles (expiry_date) WHERE status = 'approved';
+
+-- Migration 016 — student error logging
+-- Captures errors students hit during registration, verification, and login.
+-- email stored as plain text (not a FK) so pre-account failures can be identified.
+-- user_id SET NULL on account deletion to preserve history without blocking cleanup.
+-- CREATE TABLE student_error_logs (
+--   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   level       VARCHAR(10) NOT NULL DEFAULT 'error',
+--   event       VARCHAR(100) NOT NULL,
+--   message     TEXT NOT NULL,
+--   email       VARCHAR(255),
+--   user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+--   route       VARCHAR(255),
+--   metadata    JSONB,
+--   created_at  TIMESTAMPTZ DEFAULT NOW()
+-- );
+-- CREATE INDEX ON student_error_logs (created_at DESC);
+-- CREATE INDEX ON student_error_logs (email);
+-- CREATE INDEX ON student_error_logs (level, created_at DESC);
+
+-- Migration 017 — add level column to student_error_logs (if table exists without it)
+-- ALTER TABLE student_error_logs ADD COLUMN IF NOT EXISTS level VARCHAR(10) NOT NULL DEFAULT 'error';
+-- CREATE INDEX IF NOT EXISTS idx_sel_level ON student_error_logs (level, created_at DESC);
+-- Existing rows get DEFAULT 'error' automatically — no data backfill needed.

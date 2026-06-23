@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { sql } from '@/lib/db';
 import { sendVerificationEmail } from '@/lib/email';
+import { log } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
 
     const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;
     if (existing.length > 0) {
+      log({ level: 'info', event: 'signup_email_exists', message: 'Sign-up attempt with existing email', email: email.toLowerCase(), route: '/api/auth/signup', metadata: { http_status: 409 } });
       return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
     }
 
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
       await sendVerificationEmail(email, verificationToken);
     } catch (emailErr) {
       console.error('Email send failed:', emailErr);
-      // Account is created — return success but warn user to check spam or retry
+      log({ level: 'error', event: 'email_send_failed', message: 'Verification email could not be sent after sign-up', email: email.toLowerCase(), route: '/api/auth/signup', metadata: { error: String(emailErr) } });
     }
 
     return NextResponse.json({ message: 'Account created. Please check your email to verify.' });
