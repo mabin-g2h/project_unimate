@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendAdminInviteEmail } from '@/lib/email';
+import { log } from '@/lib/logger';
 
 export async function GET() {
   const session = await getSession();
@@ -48,7 +49,11 @@ export async function POST(req: NextRequest) {
   `;
 
   const inviteUrl = `${process.env.APP_URL}/accept-invite?token=${token}`;
-  sendAdminInviteEmail(normalised, inviteUrl).catch(console.error);
+  try {
+    await sendAdminInviteEmail(normalised, inviteUrl);
+  } catch (err) {
+    log({ level: 'error', event: 'email_send_failed', message: 'Admin invite email could not be sent', email: normalised, userId: session.userId, route: '/api/admin/admins', metadata: { error: String(err) } });
+  }
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
