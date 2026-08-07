@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 export interface Peer {
   id: number;
@@ -54,7 +55,8 @@ function Avatar({ src, name, size }: { src: string | null; name: string; size: n
         fontWeight: 600, fontSize: size * 0.28, color: "#fff", fontFamily: appleFont,
       }}>
         {src ? (
-          <img src={src} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <Image src={src} alt={name} width={size} height={size} unoptimized
+            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : initials(name)}
       </div>
       <span style={{

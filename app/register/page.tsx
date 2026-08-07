@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import NextImage from 'next/image';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { useRegistration } from './context';
@@ -379,7 +380,8 @@ export default function RegisterPage() {
               </p>
               {profilePreview ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <img src={profilePreview} alt="Profile preview" style={{ width: 72, height: 72, borderRadius: 14, objectFit: 'cover', border: '2px solid var(--teal)' }} />
+                  <NextImage src={profilePreview} alt="Profile preview" width={72} height={72} unoptimized
+                    style={{ borderRadius: 14, objectFit: 'cover', border: '2px solid var(--teal)' }} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '.86rem', color: 'var(--teal-deep)', marginBottom: 4 }}>Photo selected</div>
                     <button type="button" onClick={() => { setProfileFile(null); setProfilePreview(null); }}

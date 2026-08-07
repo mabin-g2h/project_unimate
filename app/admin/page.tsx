@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import AppLogo from '@/app/components/AppLogo';
 import Toast, { useToast } from '@/app/components/Toast';
 import RevokeModal from '@/app/components/RevokeModal';
@@ -504,8 +505,8 @@ export default function AdminPage() {
             <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
               {selected.profile_picture_url && (
                 <div style={{ marginBottom: 20 }}>
-                  <img src={selected.profile_picture_url!} alt="Profile"
-                    style={{ width: 80, height: 80, borderRadius: 16, objectFit: 'cover', border: '2px solid var(--line)' }} />
+                  <Image src={selected.profile_picture_url!} alt="Profile" width={80} height={80} unoptimized
+                    style={{ borderRadius: 16, objectFit: 'cover', border: '2px solid var(--line)' }} />
                 </div>
               )}
 
