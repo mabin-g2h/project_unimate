@@ -3,10 +3,19 @@ import { randomBytes } from 'crypto';
 import { sql } from '@/lib/db';
 import { sendPasswordResetEmail } from '@/lib/email';
 import { log } from '@/lib/logger';
+import { clientIp, ipMax, hitAndCheck } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
+
+    // 3 reset mails/hour per address, 10/hour per IP. When limited we still answer with the
+    // same uniform 200 (no email sent) so the limit cannot be used to probe for accounts.
+    const wait = await hitAndCheck([
+      { key: `forgot:email:${(email as string).toLowerCase()}`, max: 3, windowSec: 3600 },
+      { key: `forgot:ip:${clientIp(request)}`, max: ipMax(10), windowSec: 3600 },
+    ]);
+    if (wait > 0) return NextResponse.json({ ok: true });
 
     const [user] = await sql`
       SELECT id, email_verified

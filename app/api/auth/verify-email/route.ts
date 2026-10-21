@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   const [user] = await sql`
-    SELECT id, email, role, verification_expires
+    SELECT id, email, role, verification_expires, token_version
     FROM users
     WHERE verification_token = ${token} AND email_verified = false
   `;
@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
     email: user.email,
     role: user.role,
     emailVerified: true,
+    tv: user.token_version,
   });
 
   const dest = user.role === 'admin' ? '/admin' : '/register';

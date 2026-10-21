@@ -44,7 +44,7 @@ const PAGE_SIZE = 25;
 const LEVELS = ['error', 'warn', 'info'];
 const CATEGORIES = ['auth', 'registration', 'email', 'admin', 'dashboard', 'system'];
 const EVENTS = [
-  'signup_success', 'email_verified', 'login_success', 'login_failed', 'login_unverified_email',
+  'signup_success', 'email_verified', 'login_success', 'login_failed', 'login_rate_limited', 'login_unverified_email',
   'signup_email_exists', 'verification_link_invalid', 'verification_link_expired',
   'password_reset_requested', 'password_reset_completed', 'admin_invite_accepted',
   'registration_submitted', 'registration_failed', 'registration_error',
