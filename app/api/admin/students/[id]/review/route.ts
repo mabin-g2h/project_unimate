@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendApprovalEmail, sendRejectionEmail, sendNewPeerNotificationEmail } from '@/lib/email';
 import { computeExpiry, isValidDateString } from '@/lib/account';
-import { del } from '@vercel/blob';
+import { delFiles } from '@/lib/storage';
 import { log } from '@/lib/logger';
 
 export const runtime = 'nodejs';
@@ -91,7 +91,7 @@ export async function POST(
   // Delete sensitive documents from Vercel Blob; profile picture is retained for peer directory
   const toDelete = [profile.passport_url, profile.admission_letter_url].filter(Boolean) as string[];
   if (toDelete.length) {
-    try { await del(toDelete); } catch { /* already gone */ }
+    try { await delFiles(toDelete); } catch { /* already gone */ }
   }
 
   await log({

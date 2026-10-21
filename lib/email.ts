@@ -2,15 +2,23 @@ import nodemailer from 'nodemailer';
 import type { SendMailOptions } from 'nodemailer';
 import { log } from '@/lib/logger';
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+// SMTP_HOST/SMTP_PORT (test harness only, e.g. Mailpit) replace Gmail; no auth or TLS.
+const transporter = process.env.SMTP_HOST
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT ?? 1025),
+      secure: false,
+      ignoreTLS: true,
+    })
+  : nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+    });
 
 // Single choke point for outgoing mail: sends, then records the outcome (metadata
 // only — never the body, which can carry live token links) so admins can see in the

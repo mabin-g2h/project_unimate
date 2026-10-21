@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Test harness (Playwright/Vitest) — not app code.
+    "tests/**",
+    "playwright.config.ts",
+    "vitest.config.ts",
+    "public/__test_uploads/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

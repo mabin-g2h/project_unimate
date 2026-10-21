@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendRegistrationAcknowledgement, sendAdminRegistrationNotification } from '@/lib/email';
-import { put } from '@vercel/blob';
+import { putFile } from '@/lib/storage';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { log } from '@/lib/logger';
 
@@ -113,8 +113,7 @@ export async function POST(request: NextRequest) {
 
   async function saveFile(field: string, file: File, ext: string): Promise<string> {
     const filename = `${session!.userId}_${field}_${Date.now()}.${ext}`;
-    const { url } = await put(filename, file, { access: 'public' });
-    return url;
+    return putFile(filename, file);
   }
 
   const passportFile  = await saveFile('passport',         passportResult.file,  'pdf');
