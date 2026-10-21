@@ -24,10 +24,12 @@ export async function POST(request: NextRequest) {
         WHERE id = ${user.id}
       `;
 
+      await log({ level: 'info', event: 'password_reset_requested', category: 'auth', message: 'Password reset link requested', email: (email as string).toLowerCase(), userId: user.id, route: '/api/auth/forgot-password' });
+
       try {
         await sendPasswordResetEmail(email, token);
-      } catch (err) {
-        log({ level: 'error', event: 'email_send_failed', message: 'Password reset email could not be sent', email: (email as string).toLowerCase(), userId: user.id, route: '/api/auth/forgot-password', metadata: { error: String(err) } });
+      } catch {
+        // failure is logged by lib/email.ts deliver(); still return 200 to avoid enumeration
       }
     }
 

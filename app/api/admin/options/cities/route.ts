@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
       INSERT INTO cities (label, country) VALUES (${label.trim()}, ${country.trim()})
       RETURNING id, label, country
     `;
+    await log({ level: "info", event: "option_added", category: "admin", message: "City added", actorEmail: session.email, route: "/api/admin/options/cities", metadata: { type: "city", ...row } });
     return NextResponse.json({ city: row }, { status: 201 });
   } catch (err) {
     if (err instanceof Error && err.message.includes("23505"))

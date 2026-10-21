@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { computeExpiry, isValidDateString } from '@/lib/account';
+import { log } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -48,6 +49,12 @@ export async function PATCH(
     expiryDate = computeExpiry(body.course_start_date);
   }
 
+  const [before] = await sql`
+    SELECT sp.*, u.email AS user_email
+    FROM student_profiles sp JOIN users u ON u.id = sp.user_id
+    WHERE sp.id = ${profileId}
+  `;
+
   await sql`
     UPDATE student_profiles
     SET
@@ -75,6 +82,14 @@ export async function PATCH(
     WHERE id = ${profileId}
   `;
   if (!updated) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+
+  // Record which fields changed (names only — values like phone stay out of the log).
+  const changed = Object.keys(updated).filter(
+    k => k !== 'profile_id' && String(updated[k] ?? '') !== String(before?.[k] ?? '')
+  );
+  if (before && changed.length) {
+    await log({ level: 'info', event: 'profile_edited_by_admin', category: 'admin', message: 'Admin edited the student profile', email: before.user_email, actorEmail: session.email, userId: before.user_id, route: '/api/admin/students/[id]/profile', metadata: { fields: changed } });
+  }
 
   return NextResponse.json({ profile: updated });
 }

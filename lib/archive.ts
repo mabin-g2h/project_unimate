@@ -1,5 +1,6 @@
 import { sql } from '@/lib/db';
 import { sendAccountExpiredEmail } from '@/lib/email';
+import { log } from '@/lib/logger';
 
 // Archive every approved student whose access has expired (expiry_date < NOW()).
 // Shared by the daily cleanup cron and the admin "Archive expired students" button.
@@ -18,6 +19,10 @@ export async function archiveExpiredStudents(): Promise<number> {
   `;
 
   if (archived.length) {
+    await Promise.allSettled(
+      archived.map(r => log({ level: 'info', event: 'student_archived', category: 'admin', message: 'Access expired, student archived', email: r.email, route: 'archive-expired' }))
+    );
+
     // Secondary sends — never block on a failing mailbox.
     await Promise.allSettled(
       archived.map(r => sendAccountExpiredEmail(r.email, r.full_name ?? ''))

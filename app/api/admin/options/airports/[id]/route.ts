@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 export async function DELETE(
   _req: NextRequest,
@@ -11,6 +12,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  await sql`DELETE FROM airports WHERE id = ${id}`;
+  const removed = await sql`DELETE FROM airports WHERE id = ${id} RETURNING *`;
+  if (removed.length) {
+    await log({ level: "info", event: "option_removed", category: "admin", message: "Airport removed", actorEmail: session.email, route: "/api/admin/options/airports/[id]", metadata: { type: "airport", id: removed[0].id, name: removed[0].name ?? removed[0].label } });
+  }
   return NextResponse.json({ ok: true });
 }

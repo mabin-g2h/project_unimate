@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'crypto';
 import { sql } from '@/lib/db';
 import { archiveExpiredStudents } from '@/lib/archive';
+import { log } from '@/lib/logger';
 
 export async function GET(request: Request) {
   const incoming = request.headers.get('authorization')?.replace('Bearer ', '') ?? '';
@@ -23,14 +24,24 @@ export async function GET(request: Request) {
         AND verification_expires IS NOT NULL
         AND verification_expires < NOW()
         AND NOT EXISTS (SELECT 1 FROM student_profiles sp WHERE sp.user_id = users.id)
-      RETURNING id
+      RETURNING id, email
     )
-    SELECT COUNT(*)::int AS n FROM removed
+    SELECT id, email FROM removed
   `;
+
+  await Promise.allSettled(
+    deleted.map(r => log({ level: 'info', event: 'account_purged', category: 'system', message: 'Abandoned account deleted (never completed registration)', email: r.email, route: '/api/auth/cleanup' }))
+  );
 
   // Archive approved students whose access has expired (course_start_date + lifespan).
   // Folded into this existing daily cron to avoid adding a second Vercel cron job.
   const archived = await archiveExpiredStudents();
 
-  return Response.json({ deleted: deleted[0]?.n ?? 0, archived });
+  // Retention: drop log rows older than 90 days.
+  const pruned = await sql`
+    WITH gone AS (DELETE FROM student_error_logs WHERE created_at < NOW() - INTERVAL '90 days' RETURNING 1)
+    SELECT COUNT(*)::int AS n FROM gone
+  `;
+
+  return Response.json({ deleted: deleted.length, archived, pruned: pruned[0]?.n ?? 0 });
 }
