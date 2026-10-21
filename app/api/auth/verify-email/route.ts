@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
   `;
 
   if (!user) {
-    log({ level: 'warn', event: 'verification_link_invalid', message: 'Email verification link invalid or already used', route: '/api/auth/verify-email' });
+    log({ level: 'warn', event: 'verification_link_invalid', category: 'auth', message: 'Email verification link invalid or already used', route: '/api/auth/verify-email' });
     return NextResponse.redirect(new URL('/verify-email?error=invalid', request.url));
   }
 
   if (new Date(user.verification_expires) < new Date()) {
-    log({ level: 'warn', event: 'verification_link_expired', message: 'Email verification link expired', email: user.email, userId: user.id, route: '/api/auth/verify-email' });
+    log({ level: 'warn', event: 'verification_link_expired', category: 'auth', message: 'Email verification link expired', email: user.email, userId: user.id, route: '/api/auth/verify-email' });
     await sql`DELETE FROM users WHERE id = ${user.id}`;
     return NextResponse.redirect(new URL('/verify-email?error=expired', request.url));
   }
@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
     SET email_verified = true, verification_token = NULL, verification_expires = ${formDeadline}
     WHERE id = ${user.id}
   `;
+
+  await log({ level: 'info', event: 'email_verified', category: 'auth', message: 'Email address verified', email: user.email, userId: user.id, route: '/api/auth/verify-email' });
 
   const jwt = await signToken({
     userId: user.id,

@@ -59,7 +59,8 @@ CREATE TABLE flight_details (
 );
 
 -- ─── Student error log table ──────────────────────────────────────────────────
--- Records errors students hit during registration, verification, and login.
+-- Activity + error log: failures AND successful lifecycle/admin/email events per student
+-- (feeds the admin Logs tab and per-student timeline). Pruned after 90 days by the cleanup cron.
 -- email is plain text (not a FK) — pre-account attempts have no users row yet.
 
 CREATE TABLE student_error_logs (
@@ -67,7 +68,9 @@ CREATE TABLE student_error_logs (
   level       VARCHAR(10) NOT NULL DEFAULT 'error',  -- 'error' | 'warn' | 'info'
   event       VARCHAR(100) NOT NULL,
   message     TEXT NOT NULL,
-  email       VARCHAR(255),
+  category    VARCHAR(20),                           -- 'auth'|'registration'|'email'|'admin'|'dashboard'|'system'; NULL on pre-feature rows
+  email       VARCHAR(255),                          -- the student the entry is about
+  actor_email VARCHAR(255),                          -- admin who performed the action (admin events only)
   user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
   route       VARCHAR(255),
   metadata    JSONB,
@@ -76,6 +79,8 @@ CREATE TABLE student_error_logs (
 CREATE INDEX ON student_error_logs (created_at DESC);
 CREATE INDEX ON student_error_logs (email);
 CREATE INDEX ON student_error_logs (level, created_at DESC);
+CREATE INDEX student_error_logs_email_lower_idx ON student_error_logs (LOWER(email), created_at DESC);
+-- Rows older than 90 days are pruned by the daily cleanup cron (/api/auth/cleanup).
 
 -- ─── Admin invite table ───────────────────────────────────────────────────────
 
@@ -251,3 +256,8 @@ CREATE TABLE cities (
 -- ALTER TABLE student_error_logs ADD COLUMN IF NOT EXISTS level VARCHAR(10) NOT NULL DEFAULT 'error';
 -- CREATE INDEX IF NOT EXISTS idx_sel_level ON student_error_logs (level, created_at DESC);
 -- Existing rows get DEFAULT 'error' automatically — no data backfill needed.
+
+-- Migration 018 — activity log + per-student timeline: category + actor_email columns, case-insensitive email index
+-- ALTER TABLE student_error_logs ADD COLUMN IF NOT EXISTS category    VARCHAR(20);
+-- ALTER TABLE student_error_logs ADD COLUMN IF NOT EXISTS actor_email VARCHAR(255);
+-- CREATE INDEX IF NOT EXISTS student_error_logs_email_lower_idx ON student_error_logs (LOWER(email), created_at DESC);

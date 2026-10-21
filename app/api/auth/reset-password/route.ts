@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { sql } from '@/lib/db';
+import { log } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const [user] = await sql`
-      SELECT id, password_reset_expires
+      SELECT id, email, password_reset_expires
       FROM users
       WHERE password_reset_token = ${token}
     `;
@@ -37,6 +38,8 @@ export async function POST(request: NextRequest) {
           password_reset_expires = NULL
       WHERE id = ${user.id}
     `;
+
+    await log({ level: 'info', event: 'password_reset_completed', category: 'auth', message: 'Password changed via reset link', email: user.email, userId: user.id, route: '/api/auth/reset-password' });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

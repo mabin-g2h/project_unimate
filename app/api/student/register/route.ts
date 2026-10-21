@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   const [existing] = await sql`SELECT id FROM student_profiles WHERE user_id = ${session.userId}`;
   if (existing) {
-    log({ level: 'warn', event: 'registration_failed', message: 'Registration attempted after already submitting', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 409 } });
+    log({ level: 'warn', event: 'registration_failed', category: 'registration', message: 'Registration attempted after already submitting', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 409 } });
     return NextResponse.json({ error: 'You have already submitted a registration.' }, { status: 409 });
   }
 
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   const allConsentsAccepted = formData.get('consents_accepted') === 'true';
   if (!allConsentsAccepted) {
-    log({ level: 'warn', event: 'registration_failed', message: 'Registration submitted without consent', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'missing_consent' } });
+    log({ level: 'warn', event: 'registration_failed', category: 'registration', message: 'Registration submitted without consent', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'missing_consent' } });
     return NextResponse.json({ error: 'Please accept all four consent declarations before submitting.' }, { status: 400 });
   }
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   };
   for (const field of Object.keys(FIELD_LABELS)) {
     if (!((formData.get(field) as string) ?? '').trim()) {
-      log({ level: 'warn', event: 'registration_failed', message: `Registration failed — missing required field: ${field}`, email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'missing_field', field } });
+      log({ level: 'warn', event: 'registration_failed', category: 'registration', message: `Registration failed — missing required field: ${field}`, email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'missing_field', field } });
       return NextResponse.json({ error: `${FIELD_LABELS[field]} is required — please fill it in.` }, { status: 400 });
     }
   }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   // Validate + normalise phone to E.164 (format-only check, no SMS/OTP)
   const parsedPhone = parsePhoneNumberFromString(((formData.get('phone') as string) ?? '').trim());
   if (!parsedPhone || !parsedPhone.isValid()) {
-    log({ level: 'warn', event: 'registration_failed', message: 'Registration failed — invalid phone number', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'invalid_phone' } });
+    log({ level: 'warn', event: 'registration_failed', category: 'registration', message: 'Registration failed — invalid phone number', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'invalid_phone' } });
     return NextResponse.json({ error: 'Please enter a valid phone number, including the country code.' }, { status: 400 });
   }
   const phoneE164 = parsedPhone.number;
@@ -86,17 +86,17 @@ export async function POST(request: NextRequest) {
   ): Promise<{ file: File; kind: 'pdf' | 'jpeg' | 'png' } | NextResponse> {
     const file = formData.get(field) as File | null;
     if (!file || file.size === 0) {
-      log({ level: 'warn', event: 'registration_failed', message: `Registration failed — required file missing: ${field}`, email: session!.email, userId: session!.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'file_missing', field } });
+      log({ level: 'warn', event: 'registration_failed', category: 'registration', message: `Registration failed — required file missing: ${field}`, email: session!.email, userId: session!.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'file_missing', field } });
       return NextResponse.json({ error: `${label} is required — please attach it before submitting (${formatLabel}, max ${maxLabel}).` }, { status: 400 });
     }
     if (file.size > maxBytes) {
       const actualMB = (file.size / (1024 * 1024)).toFixed(1);
-      log({ level: 'warn', event: 'registration_failed', message: `Registration failed — file too large: ${field} (${actualMB} MB)`, email: session!.email, userId: session!.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'file_too_large', field, actual_mb: actualMB, max_label: maxLabel } });
+      log({ level: 'warn', event: 'registration_failed', category: 'registration', message: `Registration failed — file too large: ${field} (${actualMB} MB)`, email: session!.email, userId: session!.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'file_too_large', field, actual_mb: actualMB, max_label: maxLabel } });
       return NextResponse.json({ error: `${label} is ${actualMB} MB, which is over the ${maxLabel} limit. Please upload a smaller file.` }, { status: 400 });
     }
     const kind = await sniff(file);
     if (kind === 'unknown' || !accept.includes(kind)) {
-      log({ level: 'warn', event: 'registration_failed', message: `Registration failed — invalid file format: ${field} (detected: ${kind})`, email: session!.email, userId: session!.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'invalid_file_format', field, detected_kind: kind, expected: formatLabel } });
+      log({ level: 'warn', event: 'registration_failed', category: 'registration', message: `Registration failed — invalid file format: ${field} (detected: ${kind})`, email: session!.email, userId: session!.userId, route: '/api/student/register', metadata: { http_status: 400, reason: 'invalid_file_format', field, detected_kind: kind, expected: formatLabel } });
       return NextResponse.json({ error: `${label} must be a valid ${formatLabel}. The file you uploaded isn't a genuine ${formatLabel} — it may have been renamed or is corrupted. Please re-export and upload it again.` }, { status: 400 });
     }
     return { file, kind };
@@ -149,13 +149,23 @@ export async function POST(request: NextRequest) {
       )
     `;
   } catch (err) {
-    log({ level: 'error', event: 'registration_error', message: 'Registration failed — server error during DB insert', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 500, error: String(err) } });
+    log({ level: 'error', event: 'registration_error', category: 'registration', message: 'Registration failed — server error during DB insert', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 500, error: String(err) } });
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 
   // Form submitted — clear the 48-hour registration deadline so the account is
   // never purged by the abandoned-account cleanup.
   await sql`UPDATE users SET verification_expires = NULL WHERE id = ${session.userId}`;
+
+  await log({
+    level: 'info', event: 'registration_submitted', category: 'registration',
+    message: 'Registration form submitted with consents', email: session.email, userId: session.userId,
+    route: '/api/student/register',
+    metadata: {
+      university: formData.get('university_name'), country_of_education: formData.get('country_of_education'),
+      files: { passport: passportResult.file.size, admission_letter: admissionResult.file.size, profile_picture: profileResult.file.size },
+    },
+  });
 
   await sendRegistrationAcknowledgement(session.email, fullName);
 

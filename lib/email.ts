@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import type { SendMailOptions } from 'nodemailer';
+import { log } from '@/lib/logger';
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
@@ -9,6 +11,22 @@ const transporter = nodemailer.createTransport({
     pass: process.env.GMAIL_APP_PASSWORD,
   },
 });
+
+// Single choke point for outgoing mail: sends, then records the outcome (metadata
+// only — never the body, which can carry live token links) so admins can see in the
+// Logs tab which emails a student received. Awaited because Vercel freezes the
+// function once the response returns. Send errors are re-thrown unchanged.
+async function deliver(type: string, mail: SendMailOptions) {
+  const to = String(mail.to ?? '');
+  const subject = String(mail.subject ?? '');
+  try {
+    await transporter.sendMail(mail);
+  } catch (err) {
+    await log({ level: 'error', event: 'email_send_failed', category: 'email', message: `Email could not be sent (${type})`, email: to.toLowerCase(), metadata: { type, subject, error: String(err) } });
+    throw err;
+  }
+  await log({ level: 'info', event: 'email_sent', category: 'email', message: `Email sent (${type})`, email: to.toLowerCase(), metadata: { type, subject } });
+}
 
 const BRAND = '#0942BD';
 const CORAL = '#EE5B36';
@@ -34,7 +52,7 @@ function wrap(body: string) {
 
 export async function sendVerificationEmail(to: string, token: string) {
   const url = `${process.env.APP_URL}/api/auth/verify-email?token=${token}`;
-  await transporter.sendMail({
+  await deliver('verification', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: 'Verify your email — UniMate',
@@ -52,7 +70,7 @@ export async function sendVerificationEmail(to: string, token: string) {
 }
 
 export async function sendRegistrationAcknowledgement(to: string, name: string) {
-  await transporter.sendMail({
+  await deliver('registration_ack', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: 'Application received — UniMate',
@@ -76,7 +94,7 @@ export async function sendRegistrationAcknowledgement(to: string, name: string) 
 
 export async function sendAdminRegistrationNotification(adminEmail: string, studentName: string, studentEmail: string) {
   const adminPortalUrl = `${process.env.APP_URL}/admin`;
-  await transporter.sendMail({
+  await deliver('admin_registration_notice', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to: adminEmail,
     subject: 'New student application — UniMate',
@@ -101,7 +119,7 @@ export async function sendAdminRegistrationNotification(adminEmail: string, stud
 
 export async function sendApprovalEmail(to: string, name: string) {
   const url = `${process.env.APP_URL}/login`;
-  await transporter.sendMail({
+  await deliver('approval', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: "You're approved — UniMate 🎉",
@@ -119,7 +137,7 @@ export async function sendApprovalEmail(to: string, name: string) {
 }
 
 export async function sendAdminInviteEmail(to: string, inviteUrl: string) {
-  await transporter.sendMail({
+  await deliver('admin_invite', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: "You've been invited to join UniMate as an admin",
@@ -142,7 +160,7 @@ export async function sendPeerInviteEmail(to: string, inviterName: string, unive
   const subject = universityName
     ? `Someone studying at ${universityName} wants to meet you 👋`
     : 'Someone wants you to join them on UniMate 👋';
-  await transporter.sendMail({
+  await deliver('peer_invite', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject,
@@ -182,7 +200,7 @@ export async function sendPeerInviteEmail(to: string, inviterName: string, unive
 
 export async function sendPasswordResetEmail(to: string, token: string) {
   const url = `${process.env.APP_URL}/reset-password?token=${token}`;
-  await transporter.sendMail({
+  await deliver('password_reset', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: 'Reset your password — UniMate',
@@ -201,7 +219,7 @@ export async function sendPasswordResetEmail(to: string, token: string) {
 
 export async function sendNewPeerNotificationEmail(to: string, newStudentName: string, universityName: string) {
   const url = `${process.env.APP_URL}/`;
-  await transporter.sendMail({
+  await deliver('new_peer_notice', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: `New UniMate peer at ${universityName} — UniMate`,
@@ -218,7 +236,7 @@ export async function sendNewPeerNotificationEmail(to: string, newStudentName: s
 }
 
 export async function sendRevokeEmail(to: string, name: string, reason: string) {
-  await transporter.sendMail({
+  await deliver('revoke', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: 'Your UniMate access has been suspended — UniMate',
@@ -238,7 +256,7 @@ export async function sendRevokeEmail(to: string, name: string, reason: string) 
 
 export async function sendUnrevokeEmail(to: string, name: string) {
   const url = `${process.env.APP_URL}/`;
-  await transporter.sendMail({
+  await deliver('unrevoke', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: 'Your UniMate access has been restored — UniMate',
@@ -257,7 +275,7 @@ export async function sendUnrevokeEmail(to: string, name: string) {
 
 export async function sendRejectionEmail(to: string, name: string, reason: string) {
   const url = `${process.env.APP_URL}/login`;
-  await transporter.sendMail({
+  await deliver('rejection', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: 'Application update — UniMate',
@@ -281,7 +299,7 @@ export async function sendRejectionEmail(to: string, name: string, reason: strin
 }
 
 export async function sendAccountExpiredEmail(to: string, name: string) {
-  await transporter.sendMail({
+  await deliver('account_expired', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject: 'Your UniMate access has ended',

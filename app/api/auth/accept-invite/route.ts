@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { sql } from '@/lib/db';
+import { log } from '@/lib/logger';
 import { signToken, makeSessionCookieOptions } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -33,6 +34,8 @@ export async function POST(req: NextRequest) {
   `;
 
   await sql`DELETE FROM admin_invites WHERE id = ${invite.id}`;
+
+  await log({ level: 'info', event: 'admin_invite_accepted', category: 'auth', message: 'Admin invitation accepted', email: user.email, userId: user.id, route: '/api/auth/accept-invite' });
 
   const jwtToken = await signToken({
     userId: user.id,

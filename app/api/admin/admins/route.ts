@@ -49,10 +49,12 @@ export async function POST(req: NextRequest) {
   `;
 
   const inviteUrl = `${process.env.APP_URL}/accept-invite?token=${token}`;
+  await log({ level: 'info', event: 'admin_invited', category: 'admin', message: 'Admin invitation sent', email: normalised, actorEmail: session.email, userId: session.userId, route: '/api/admin/admins' });
+
   try {
     await sendAdminInviteEmail(normalised, inviteUrl);
-  } catch (err) {
-    log({ level: 'error', event: 'email_send_failed', message: 'Admin invite email could not be sent', email: normalised, userId: session.userId, route: '/api/admin/admins', metadata: { error: String(err) } });
+  } catch {
+    // failure is logged by lib/email.ts deliver()
   }
 
   return NextResponse.json({ ok: true }, { status: 201 });

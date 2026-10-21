@@ -14,18 +14,18 @@ export async function POST(request: NextRequest) {
     `;
 
     if (!user) {
-      log({ level: 'warn', event: 'login_failed', message: 'Login attempt with unknown email', email: (email as string).toLowerCase(), route: '/api/auth/login', metadata: { http_status: 401 } });
+      log({ level: 'warn', event: 'login_failed', category: 'auth', message: 'Login attempt with unknown email', email: (email as string).toLowerCase(), route: '/api/auth/login', metadata: { http_status: 401 } });
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-      log({ level: 'warn', event: 'login_failed', message: 'Login failed — incorrect password', email: user.email, userId: user.id, route: '/api/auth/login', metadata: { http_status: 401 } });
+      log({ level: 'warn', event: 'login_failed', category: 'auth', message: 'Login failed — incorrect password', email: user.email, userId: user.id, route: '/api/auth/login', metadata: { http_status: 401 } });
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
     }
 
     if (!user.email_verified) {
-      log({ level: 'warn', event: 'login_unverified_email', message: 'Login attempt with unverified email', email: user.email, userId: user.id, route: '/api/auth/login', metadata: { http_status: 403 } });
+      log({ level: 'warn', event: 'login_unverified_email', category: 'auth', message: 'Login attempt with unverified email', email: user.email, userId: user.id, route: '/api/auth/login', metadata: { http_status: 403 } });
       return NextResponse.json(
         { error: 'Please verify your email before logging in.', code: 'UNVERIFIED' },
         { status: 403 }
@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
       role: user.role,
       emailVerified: true,
     });
+
+    await log({ level: 'info', event: 'login_success', category: 'auth', message: 'Logged in', email: user.email, userId: user.id, route: '/api/auth/login', metadata: { role: user.role } });
 
     const response = NextResponse.json({ role: user.role });
     response.cookies.set('auth-token', token, makeSessionCookieOptions());

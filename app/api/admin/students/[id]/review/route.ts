@@ -4,6 +4,7 @@ import { sql } from '@/lib/db';
 import { sendApprovalEmail, sendRejectionEmail, sendNewPeerNotificationEmail } from '@/lib/email';
 import { computeExpiry, isValidDateString } from '@/lib/account';
 import { del } from '@vercel/blob';
+import { log } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -92,6 +93,20 @@ export async function POST(
   if (toDelete.length) {
     try { await del(toDelete); } catch { /* already gone */ }
   }
+
+  await log({
+    level: 'info',
+    event: action === 'approve' ? 'student_approved' : 'student_rejected',
+    category: 'admin',
+    message: action === 'approve' ? 'Application approved' : 'Application rejected',
+    email: profile.email,
+    actorEmail: session.email,
+    userId: profile.user_id,
+    route: '/api/admin/students/[id]/review',
+    metadata: action === 'approve'
+      ? { course_start_date: startDate, expiry_date: expiry }
+      : { reason: String(rejection_reason).trim().slice(0, 500) },
+  });
 
   if (action === 'approve') {
     // Grow the reference directory from the admin-confirmed values (best-effort).

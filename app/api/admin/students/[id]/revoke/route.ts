@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendRevokeEmail, sendUnrevokeEmail } from '@/lib/email';
+import { log } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -53,6 +54,20 @@ export async function POST(
     FROM users u JOIN student_profiles sp ON sp.user_id = u.id
     WHERE u.id = ${result[0].user_id as number}
   `;
+
+  if (student?.email) {
+    await log({
+      level: 'info',
+      event: action === 'revoke' ? 'student_revoked' : 'student_unrevoked',
+      category: 'admin',
+      message: action === 'revoke' ? 'Access revoked' : 'Access restored',
+      email: student.email as string,
+      actorEmail: session.email,
+      userId: result[0].user_id as number,
+      route: '/api/admin/students/[id]/revoke',
+      metadata: action === 'revoke' ? { reason: sanitisedReason } : undefined,
+    });
+  }
 
   if (student?.email && student?.full_name) {
     if (action === 'revoke') {
