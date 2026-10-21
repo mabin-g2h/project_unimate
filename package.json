@@ -6,7 +6,13 @@
     "dev": "NODE_OPTIONS=--dns-result-order=ipv4first next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:unit": "vitest run",
+    "test:e2e": "NODE_OPTIONS=--dns-result-order=ipv4first playwright test tests/e2e",
+    "test:api": "NODE_OPTIONS=--dns-result-order=ipv4first playwright test tests/api",
+    "test:security": "NODE_OPTIONS=--dns-result-order=ipv4first playwright test tests/security",
+    "test:all": "vitest run && NODE_OPTIONS=--dns-result-order=ipv4first playwright test",
+    "test:mail": "docker start unimate-mailpit || docker run -d --name unimate-mailpit -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -15,24 +21,26 @@
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.3",
     "libphonenumber-js": "^1.13.6",
-    "next": "16.2.7",
-    "nodemailer": "^8.0.10",
+    "next": "16.4.2",
+    "nodemailer": "^10.1.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-phone-number-input": "^3.4.17",
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
-    "@types/nodemailer": "^8.0.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.7",
+    "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
   }
 }

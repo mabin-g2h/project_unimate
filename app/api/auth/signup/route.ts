@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { sql } from '@/lib/db';
 import { sendVerificationEmail } from '@/lib/email';
 import { log } from '@/lib/logger';
+import { clientIp, ipMax, hitAndCheck, tooMany } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +16,13 @@ export async function POST(request: NextRequest) {
     if (password.length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
     }
+
+    // Throttle sign-ups (and the verification emails they trigger): 5/hour per IP, 3/hour per email.
+    const wait = await hitAndCheck([
+      { key: `signup:ip:${clientIp(request)}`, max: ipMax(5), windowSec: 3600 },
+      { key: `signup:email:${email.toLowerCase()}`, max: 3, windowSec: 3600 },
+    ]);
+    if (wait > 0) return tooMany(wait);
 
     // Purge abandoned student accounts (expired verification link, or verified
     // but no registration form submitted within the 48-hour window) so this

@@ -14,6 +14,7 @@ CREATE TABLE users (
   password_reset_token  VARCHAR(255),
   password_reset_expires TIMESTAMPTZ,
   role                  VARCHAR(20) DEFAULT 'student',   -- 'student' | 'admin'
+  token_version         INTEGER NOT NULL DEFAULT 0,      -- bumped on demote / password reset; a JWT whose `tv` differs is rejected by getSession()
   created_at           TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -147,6 +148,14 @@ CREATE TABLE cities (
   UNIQUE (label, country)                   -- country-scoped: same-named cities can exist in different countries (e.g. London UK / London, Canada)
 );
 
+-- Fixed-window counters for login / signup / forgot-password / reset-password throttling (lib/rate-limit.ts).
+-- One row per key (e.g. 'login:email:a@b.com', 'login:ip:1.2.3.4'); rows older than a day are pruned by the cleanup cron.
+CREATE TABLE rate_limits (
+  key          TEXT PRIMARY KEY,
+  count        INTEGER NOT NULL,
+  window_start TIMESTAMPTZ NOT NULL
+);
+
 -- ─── Migrations (apply to existing databases in order) ────────────────────────
 
 -- Migration 001 — peer directory phone opt-in (added with FlyMate peer directory feature)
@@ -261,3 +270,10 @@ CREATE TABLE cities (
 -- ALTER TABLE student_error_logs ADD COLUMN IF NOT EXISTS category    VARCHAR(20);
 -- ALTER TABLE student_error_logs ADD COLUMN IF NOT EXISTS actor_email VARCHAR(255);
 -- CREATE INDEX IF NOT EXISTS student_error_logs_email_lower_idx ON student_error_logs (LOWER(email), created_at DESC);
+
+-- Migration 019 — session revocation: users.token_version (REQUIRED before deploying getSession() DB re-check)
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
+-- Existing rows get 0; tokens issued before this migration carry no `tv` claim and are treated as 0, so nobody is logged out.
+
+-- Migration 020 — rate limiting counters (REQUIRED before deploying login/signup/forgot/reset throttling)
+-- CREATE TABLE IF NOT EXISTS rate_limits ( key TEXT PRIMARY KEY, count INTEGER NOT NULL, window_start TIMESTAMPTZ NOT NULL );

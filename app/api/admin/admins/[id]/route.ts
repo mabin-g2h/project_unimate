@@ -19,7 +19,7 @@ export async function DELETE(
   if (userId === session.userId)
     return NextResponse.json({ error: 'Cannot remove your own admin role.' }, { status: 400 });
 
-  const result = await sql`UPDATE users SET role = 'student' WHERE id = ${userId} AND role = 'admin' RETURNING email`;
+  const result = await sql`UPDATE users SET role = 'student', token_version = token_version + 1 WHERE id = ${userId} AND role = 'admin' RETURNING email`;
   if (result.length === 0)
     return NextResponse.json({ error: 'Admin not found.' }, { status: 404 });
   await log({ level: 'info', event: 'admin_removed', category: 'admin', message: 'Admin demoted to student', email: result[0].email, actorEmail: session.email, userId, route: '/api/admin/admins/[id]' });

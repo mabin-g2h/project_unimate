@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { sql } from '@/lib/db';
 import { log } from '@/lib/logger';
+import { clientIp, ipMax, hitAndCheck, tooMany } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const { token, password } = await request.json();
+
+    // Token guessing guard: 10 attempts/hour per IP.
+    const wait = await hitAndCheck([{ key: `reset:ip:${clientIp(request)}`, max: ipMax(10), windowSec: 3600 }]);
+    if (wait > 0) return tooMany(wait);
 
     if (!token || typeof token !== 'string') {
       return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
@@ -35,7 +40,8 @@ export async function POST(request: NextRequest) {
       UPDATE users
       SET password_hash = ${passwordHash},
           password_reset_token = NULL,
-          password_reset_expires = NULL
+          password_reset_expires = NULL,
+          token_version = token_version + 1
       WHERE id = ${user.id}
     `;
 

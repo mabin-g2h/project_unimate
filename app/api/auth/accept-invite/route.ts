@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const [user] = await sql`
     INSERT INTO users (email, password_hash, email_verified, role)
     VALUES (${invite.email}, ${passwordHash}, true, 'admin')
-    RETURNING id, email, role
+    RETURNING id, email, role, token_version
   `;
 
   await sql`DELETE FROM admin_invites WHERE id = ${invite.id}`;
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     email: user.email,
     role: user.role,
     emailVerified: true,
+    tv: user.token_version,
   });
 
   const response = NextResponse.json({ ok: true });

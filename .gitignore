@@ -46,3 +46,9 @@ next-env.d.ts
 
 # claude code local settings
 .claude/
+
+# test harness
+/public/__test_uploads/
+/test-results/
+/playwright-report/
+/.next-test/

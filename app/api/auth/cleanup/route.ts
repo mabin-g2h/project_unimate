@@ -2,10 +2,18 @@ import { timingSafeEqual } from 'crypto';
 import { sql } from '@/lib/db';
 import { archiveExpiredStudents } from '@/lib/archive';
 import { log } from '@/lib/logger';
+import { pruneRateLimits } from '@/lib/rate-limit';
 
 export async function GET(request: Request) {
-  const incoming = request.headers.get('authorization')?.replace('Bearer ', '') ?? '';
-  const expected = process.env.CRON_SECRET ?? '';
+  // Fail closed: with no CRON_SECRET configured nobody can run the cleanup (an empty
+  // secret would otherwise match a request that sends no Authorization header at all).
+  const expected = process.env.CRON_SECRET;
+  if (!expected) {
+    console.error('CRON_SECRET is not set - refusing to run /api/auth/cleanup');
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const header = request.headers.get('authorization') ?? '';
+  const incoming = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : '';
   const valid =
     incoming.length === expected.length &&
     timingSafeEqual(Buffer.from(incoming), Buffer.from(expected));
@@ -42,6 +50,8 @@ export async function GET(request: Request) {
     WITH gone AS (DELETE FROM student_error_logs WHERE created_at < NOW() - INTERVAL '90 days' RETURNING 1)
     SELECT COUNT(*)::int AS n FROM gone
   `;
+
+  await pruneRateLimits().catch(() => 0); // expired rate-limit counters
 
   return Response.json({ deleted: deleted.length, archived, pruned: pruned[0]?.n ?? 0 });
 }
