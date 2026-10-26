@@ -14,6 +14,5 @@ describe('COUNTRIES', () => {
     for (const c of Object.keys(ACCEPTANCE_DOCS)) expect(COUNTRIES).toContain(c);
     expect(Object.values(ACCEPTANCE_DOCS).map(d => d.short).sort()).toEqual(['CAS', 'CoE', 'I-20', 'IPA', 'LOA']);
   });
-  // FINDING F-30 (docs): CLAUDE.md describes a "67-country list"; the constant has 65.
-  it.fails('matches the documented size of 67', () => expect(COUNTRIES).toHaveLength(67));
+  it('has the 65 entries documented in CLAUDE.md', () => expect(COUNTRIES).toHaveLength(65));
 });

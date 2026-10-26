@@ -2,7 +2,7 @@
 
 # UniMate
 
-India's student community platform for studying abroad. Connects Indian students from offer letter through graduation.
+India's student community platform for studying abroad. Connects Indian students from a confirmed university seat (final acceptance letter — not an offer letter) through graduation.
 
 ## Commands
 
@@ -15,6 +15,19 @@ npm run test:all     # Vitest + Playwright against the Neon test branch (.env.te
 ```
 
 Run `npx tsc --noEmit && npm run lint` before marking any task complete.
+
+## Where Things Are Documented
+
+| File | Purpose |
+|---|---|
+| `CLAUDE.md` (this file) | How the system works **now**: structure, schema, hard rules, product rules, flows, known gaps |
+| `AGENTS.md` | How to work in the repo: conventions, serverless rules, testing, git, "Done means" |
+| `docs/CHANGELOG.md` | What changed, **why**, and the production evidence behind it — read before altering existing behaviour; add an entry with every behaviour-changing PR |
+| `docs/backlog.md` | Ideas not built yet, with evidence (registration funnel, documents, email) — check here before designing a new feature |
+| `docs/testing-plan.md` | Test harness, safety guards, suites, manual-testing recipe, test-branch status |
+| `docs/qa/` | Dated QA reports; open findings are `test.fail` / `it.fails` markers in `tests/` |
+| `docs/technical-overview.md` | Longer human-oriented architecture write-up; can lag behind this file |
+| `db/schema.sql` | Schema + numbered migrations (next: 021) |
 
 ## Tech Stack
 
@@ -108,7 +121,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
   email.ts     # Every sender goes through internal deliver(type, mail), which sends then awaits a log() row (`email_sent` info / `email_send_failed` error; metadata { type, subject } only — never the body or token links) and rethrows errors unchanged. Senders: sendVerificationEmail, sendRegistrationAcknowledgement, sendAdminRegistrationNotification, sendApprovalEmail, sendRejectionEmail, sendRevokeEmail, sendUnrevokeEmail, sendAccountExpiredEmail, sendAdminInviteEmail, sendPasswordResetEmail, sendNewPeerNotificationEmail, sendPeerInviteEmail
   account.ts   # ACCOUNT_LIFESPAN_DAYS (env or 30-day default), isValidDateString(value), computeExpiry(courseStart) — account lifespan helpers used by review + profile-edit routes
   archive.ts   # archiveExpiredStudents() — UPDATE approved → archived where expiry_date < NOW(); fires sendAccountExpiredEmail per student via Promise.allSettled; shared by the daily cron and the admin on-demand sweep
-  countries.ts # export const COUNTRIES — canonical 67-country list; shared by /register and /admin (country dropdowns + university/city country-tagging) so filter strings stay identical. Also `ACCEPTANCE_DOCS` — destination country → final admission document (Australia CoE, UK CAS, Canada LOA, US I-20, Singapore IPA; others fall back to "final admission letter"), used for the register-form guidance and the admin review document button
+  countries.ts # export const COUNTRIES — canonical 65-country list; shared by /register and /admin (country dropdowns + university/city country-tagging) so filter strings stay identical. Also `ACCEPTANCE_DOCS` — destination country → final admission document (Australia CoE, UK CAS, Canada LOA, US I-20, Singapore IPA; others fall back to "final admission letter"), used for the register-form guidance and the admin review document button
   logger.ts    # log(entry) — INSERT into student_error_logs; LogLevel ('error'|'warn'|'info') + LogCategory ('auth'|'registration'|'email'|'admin'|'dashboard'|'system'); optional email (the student), actorEmail (acting admin), userId, route, metadata. Returns a Promise that never rejects: callers either ignore it (fire-and-forget) or `await` it where a Vercel freeze could drop it (email sends, auth/admin success events); used across auth, registration, admin, email and dashboard code
 /tests/                                  # unit (Vitest) · api / e2e / security (Playwright, own `next dev -p 3100`) · helpers; guarded global setup resets + seeds the Neon TEST branch only. See AGENTS.md
 /middleware.ts                           # JWT protection — public allowlist + /admin role guard + /register emailVerified guard
@@ -134,6 +147,14 @@ Tables: `users` (includes `password_reset_token VARCHAR(255)`, `password_reset_e
 5. **File URLs** stored in the DB (`passport_url`, `admission_letter_url`, `profile_picture_url`) are full Vercel Blob `https://` URLs. Use them directly as `src`/`href` — do not route through `/api/files/`. Profile pictures are public blob URLs visible to any authenticated student; passport and admission letter blobs are deleted after review.
 
 6. **Env vars** are accessed via `process.env` directly. Never hardcode secrets or connection strings. All vars must be present at runtime — the non-null assertions (`!`) will throw if missing.
+
+## Product Rules (why the flow is shaped this way)
+
+1. **Confirmed seat only.** UniMate is for students who have secured a place. Registration requires the *final* acceptance document — CoE (Australia), CAS (UK), LOA (Canada), I-20 (USA), IPA (Singapore), or the final admission letter for other countries (e.g. Germany). Offer letters (conditional or not), offer emails and fee receipts are rejected. Source of truth: `ACCEPTANCE_DOCS` in `lib/countries.ts`; the form shows a guidance card, a required confirmation checkbox and a soft warning for file names containing "offer".
+2. **Every application is reviewed by a human admin.** The system checks format and size only (PDF magic bytes, 2 MB), never the document's content; OCR is out of scope. Approval requires `course_start_date`. Passport and admission document are deleted from Blob right after review (approve or reject), so a rejected student re-applies with a blank form and re-uploads.
+3. **Time windows.** Verification link 12 h → after verifying, students have 48 h to submit the form → otherwise the account is purged (daily cron at 00:00 UTC, or inline on the next signup with that email). Submitting the form clears the deadline. After approval, access lasts until `course_start_date + ACCOUNT_LIFESPAN_DAYS` (default 30), then the student is archived.
+4. **Peers.** A student sees approved students heading to the same `country_of_education`; sensitive fields never leave the API (Hard Rule 1).
+5. **Registration is the funnel's weakest step** (production, 2026-10-21..25: 11 sign-ups, 11 verified, 4 submitted). Prefer changes that reduce friction at the form; log new funnel steps through `lib/logger.ts` so they show in the admin Logs tab. Ideas and their evidence live in `docs/backlog.md`.
 
 ## Auth Middleware Logic
 

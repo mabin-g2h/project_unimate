@@ -2,8 +2,30 @@
 
 Living document. Update the status checkboxes and the change log as work progresses.
 
-**Status:** All phases executed 2026-10-21. Report: `docs/qa/2026-10-21-report.md` (35 findings, no app fixes made).
-**Last updated:** 2026-10-21 (pre-flight corrections + Phase 1)
+**Status:** All phases executed 2026-10-21 (report: `docs/qa/2026-10-21-report.md`, 35 findings; Critical/High fixed in PR #8, F-30 fixed 2026-10-26, 27 open). The harness is merged to `main` and extended with every behaviour change (latest: registration form + final admission document, PR #9).
+**Last run (2026-10-26, `npm run test:all`):** 79 unit + 254 Playwright (1 skipped), all green; `tsc` and `eslint` clean. "Green" includes the open QA findings, which are written as `test.fail` / `it.fails`.
+**Last updated:** 2026-10-26
+
+> **Test branch expiry:** the Neon branch `test/qa-harness` expires **2026-10-28**. After that `npm run test:*` fails until a new branch is created (Neon MCP/console, off `production`), its host is added to `TEST_DB_ALLOWED_HOSTS` and `DATABASE_CONNECTION_STRING` in the gitignored `.env.test` is updated. Extend the expiry instead if you want to avoid this.
+
+## Running the suites
+
+- Prerequisites: Docker Desktop running, then `npm run test:mail` (Mailpit on 1025/8025). Global setup refuses to run without it.
+- `npm run test:unit` (Vitest) · `test:api` · `test:e2e` · `test:security` (Playwright, each starts its own `next dev -p 3100`) · `test:all`.
+- `npm run test:e2e -- <file>` still runs **every** e2e spec (the script already passes `tests/e2e`); run a single file or test with `npx playwright test tests/e2e/<file>.spec.ts [-g "name"]`.
+- Only one `next dev` can run per checkout (Next 16 lock): stop any preview server before running the suites.
+- Specs added after the 2026-10-21 QA run: `tests/e2e/register-form.spec.ts` (11 tests, see Phase 2 item 12). The shared helper `tests/helpers/ui.ts` `fillRegistration` ticks the "I confirm this is my final … not an offer letter" checkbox; any new journey that fills the registration form must go through it.
+
+## Manual testing against a throwaway Neon branch (never `.env.local`)
+
+`.env.local` points at production. For hands-on testing of UI changes:
+1. Create a Neon branch off `production` (e.g. `preview/<topic>`). It is a full copy of production data incl. student PII and the Neon MCP offers no TTL or schema-only option — **delete it when done**.
+2. Create a gitignored `.env.preview`: copy `.env.test` without `DATABASE_CONNECTION_STRING`/`TEST_MODE`, add the new branch's connection string **in single quotes** (it contains `&`), set `APP_URL=http://localhost:3200`, keep `SMTP_HOST=127.0.0.1`, `SMTP_PORT=1025`, `STORAGE_DRIVER=local`, blank Blob variables.
+3. `npm run test:mail`, then `set -a; . ./.env.preview; set +a; BLOB_READ_WRITE_TOKEN='' BLOB_STORE_ID='' NODE_OPTIONS=--dns-result-order=ipv4first npx next dev -p 3200`.
+4. Prove isolation before trusting it: sign up a throwaway user through the local server, then confirm the row exists on the preview branch and **not** on production (read-only `SELECT`).
+5. Clean up: stop the server, `docker stop unimate-mailpit`, delete `.env.preview`, delete the Neon branch.
+
+Done for PR #9 (2026-10-25/26) and cleaned up afterwards.
 
 ## Decisions
 
@@ -75,6 +97,7 @@ Scripts: `test:unit`, `test:e2e`, `test:api`, `test:security`, `test:all`, `test
 - [x] 9. Invite-a-peer: self-invite, existing user, 7-day duplicate, 10/day cap
 - [x] 10. Logs tab: every step above shows in Logs and the student timeline; email Sent/Failed pills; filters; email failure logs `email_send_failed` once
 - [x] 11. Mobile viewport (390px) pass of login / register / dashboard / admin
+- [x] 12. Registration form resilience and final-document guidance (`tests/e2e/register-form.spec.ts`, added 2026-10-26): oversized / renamed non-PDF rejected inline on pick; missing document error in view; typed details survive a reload; consent submit shows an error and re-enables the button on a mocked 413, aborted request and non-JSON 500; guide lists all five documents before a country is chosen and follows the country (CoE / CAS / Germany fallback); Continue blocked until the "final letter" checkbox is ticked and the tick survives "Back to edit"; "Offer_Letter.pdf" warns but still attaches. Not covered: an API test that registration returns 200 when the acknowledgement email fails (the shared Mailpit cannot be made to fail), and a real Vercel 413 (only reproducible in production).
 
 ## Phase 3: API tests (no browser)
 
@@ -101,7 +124,7 @@ Scripts: `test:unit`, `test:e2e`, `test:api`, `test:security`, `test:all`, `test
 - [x] Phone parsing / E.164 logic and file-sniffing helper (extract if needed)
 - [x] `lib/email.ts` `deliver()` logging (mock transporter: sent / failed rows, rethrow)
 - [x] `lib/logger.ts` never rejects
-- [x] `lib/countries.ts` consistency
+- [x] `lib/countries.ts` consistency (65 entries as documented; every `ACCEPTANCE_DOCS` key is a real country and the five documents CoE/CAS/LOA/I-20/IPA are covered)
 
 ## Reporting format
 
@@ -117,7 +140,8 @@ Each run writes `docs/qa/YYYY-MM-DD-report.md` with a summary table and, per fin
 
 - [x] Branch created via Neon MCP: `test/qa-harness` (`br-patient-sky-apa7l3ng`), expires 2026-10-28
 - [x] Allow-listed host: `ep-round-queen-apdb1d3n-pooler.c-7.us-east-1.aws.neon.tech` (in `.env.test`)
-- [ ] Commit the harness on `test/qa-harness` (branch exists locally, nothing committed yet)
+- [x] Harness committed and merged to `main` in PR #8 (2026-10-21)
+- [ ] `test/qa-harness` expires 2026-10-28 — extend or recreate before then (see the note at the top)
 
 ## Pre-flight corrections (2026-10-21, from reading the code)
 
@@ -139,3 +163,6 @@ Each run writes `docs/qa/YYYY-MM-DD-report.md` with a summary table and, per fin
 | 2026-10-21 | Phases 2-5 executed: 62 unit + 241 Playwright tests pass; 35 findings documented in docs/qa/2026-10-21-report.md. |
 | 2026-10-21 | Fixed Critical/High findings F-35, F-31, F-14, F-19 (+F-15, F-16, F-20) on branch `fix/critical-high-findings`; suite 78 unit + 244 Playwright green. Production migrations 019/020 pending. |
 | 2026-10-21 | Migrations 019 (users.token_version) and 020 (rate_limits) applied to production; CRON_SECRET confirmed in Vercel. Fix branch not yet committed/deployed. |
+| 2026-10-21 | PR #8 merged and deployed (fixes + harness). |
+| 2026-10-26 | PR #9: added `tests/e2e/register-form.spec.ts` (11 tests) and an `ACCEPTANCE_DOCS` unit test; `fillRegistration` ticks the new confirmation checkbox. Full run 79 unit + 254 Playwright green. Documented the manual-testing recipe and the `next dev` lock. |
+| 2026-10-26 | F-30 closed: `CLAUDE.md` now says 65 countries; the unit test asserts 65 (no longer `it.fails`). 27 findings open. |
