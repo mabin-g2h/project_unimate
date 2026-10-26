@@ -5,15 +5,31 @@ import { useRouter } from 'next/navigation';
 import NextImage from 'next/image';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { useRegistration } from './context';
+import { useRegistration, DRAFT_KEY } from './context';
 import AppLogo from '@/app/components/AppLogo';
-import { COUNTRIES } from '@/lib/countries';
+import { COUNTRIES, ACCEPTANCE_DOCS } from '@/lib/countries';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
 const GENDERS = ['Male', 'Female'];
 const YEARS = [2026, 2027, 2028, 2029, 2030];
 const OTHER = '__other__';
+const PDF_MAX = 2 * 1024 * 1024; // mirrors the server cap in /api/student/register
+
+type DocField = 'passport' | 'admission' | 'photo' | 'confirm';
+
+// Same checks the server runs (size + real %PDF header), done up front so students
+// find out when they pick the file, not after the consent step.
+async function pdfProblem(file: File): Promise<string | null> {
+  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  if (![0x25, 0x50, 0x44, 0x46].every((b, i) => head[i] === b)) {
+    return 'This must be a PDF. If you have a photo or scan, convert it to PDF first (most phones can do this from the share/print menu or a scanner app).';
+  }
+  if (file.size > PDF_MAX) {
+    return `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB, over the 2 MB limit. Please export or compress a smaller PDF.`;
+  }
+  return null;
+}
 
 interface University { id: number; name: string; }
 interface City { id: number; label: string; }
@@ -62,6 +78,10 @@ export default function RegisterPage() {
   const [admissionFile, setAdmissionFile] = useState<File | null>(null);
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [profilePreview, setProfilePreview] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<Partial<Record<DocField, string>>>({});
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [docConfirmed, setDocConfirmed] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   const [universities, setUniversities] = useState<University[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -84,13 +104,34 @@ export default function RegisterPage() {
         setPassportFile(registrationData.passportFile);
         setAdmissionFile(registrationData.admissionFile);
         setProfileFile(registrationData.profileFile);
+        setDocConfirmed(true); // they already ticked it before reaching the consent page
         const reader = new FileReader();
         reader.onload = e => setProfilePreview(e.target?.result as string);
         reader.readAsDataURL(registrationData.profileFile);
+      } else {
+        // Page was reloaded or reopened: bring back the typed details (files can't be restored)
+        try {
+          const draft = sessionStorage.getItem(DRAFT_KEY);
+          if (draft) {
+            setForm(f => ({ ...f, ...JSON.parse(draft) }));
+            setDraftRestored(true);
+          }
+        } catch { /* storage unavailable or draft unreadable */ }
       }
       setLoading(false);
     });
   }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the typed details so a refresh or a killed mobile tab doesn't wipe the form.
+  useEffect(() => {
+    if (loading || !Object.values(form).some(v => v)) return;
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch { /* storage unavailable */ }
+  }, [form, loading]);
+
+  // The banner sits at the top of a long form; bring it into view when it appears.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
 
   // University and city options are scoped to the chosen destination country.
   // Re-fetches whenever the country changes (incl. when restored from context
@@ -121,11 +162,24 @@ export default function RegisterPage() {
   }
 
   async function handleProfileFile(file: File) {
-    const resized = await resizeImage(file);
-    setProfileFile(resized);
-    const reader = new FileReader();
-    reader.onload = e => setProfilePreview(e.target?.result as string);
-    reader.readAsDataURL(resized);
+    try {
+      const resized = await resizeImage(file);
+      setFileErrors(e => ({ ...e, photo: undefined }));
+      setProfileFile(resized);
+      const reader = new FileReader();
+      reader.onload = e => setProfilePreview(e.target?.result as string);
+      reader.readAsDataURL(resized);
+    } catch {
+      setFileErrors(e => ({ ...e, photo: 'We could not read that image. Please choose a different JPEG or PNG photo.' }));
+    }
+  }
+
+  async function handleDocFile(field: 'passport' | 'admission', file: File | null, input: HTMLInputElement) {
+    const problem = file ? await pdfProblem(file) : null;
+    setFileErrors(e => ({ ...e, [field]: problem ?? undefined }));
+    const accepted = problem ? null : file;
+    if (field === 'passport') setPassportFile(accepted); else setAdmissionFile(accepted);
+    if (problem) input.value = ''; // lets the student re-pick the same file after fixing it
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -138,9 +192,24 @@ export default function RegisterPage() {
     if (!isValidPhoneNumber(form.phone)) {
       setError('Please enter a valid mobile number (with country code).'); return;
     }
-    if (!passportFile) { setError('Please upload your passport (PDF).'); return; }
-    if (!admissionFile) { setError('Please upload your admission letter (PDF).'); return; }
-    if (!profileFile) { setError('Please upload a profile photo.'); return; }
+    if (!passportFile || !admissionFile || !profileFile) {
+      const missing: Partial<Record<DocField, string>> = {};
+      if (!passportFile) missing.passport = 'Please upload your passport (PDF).';
+      if (!admissionFile) missing.admission = 'Please upload your admission letter (PDF).';
+      if (!profileFile) missing.photo = 'Please upload a profile photo.';
+      setFileErrors(e => ({ ...e, ...missing }));
+      setError(missing.passport ?? missing.admission ?? missing.photo ?? '');
+      return;
+    }
+    if (fileErrors.passport || fileErrors.admission || fileErrors.photo) {
+      setError('Please fix the highlighted document before continuing.'); return;
+    }
+    if (!docConfirmed) {
+      const msg = 'Please confirm that your admission document is your final letter of acceptance, not an offer letter.';
+      setFileErrors(e => ({ ...e, confirm: msg }));
+      setError(msg);
+      return;
+    }
 
     const cleanedForm = {
       ...form,
@@ -176,8 +245,13 @@ export default function RegisterPage() {
         </p>
 
         <form onSubmit={handleSubmit}>
+          {draftRestored && !error && !(passportFile && admissionFile && profileFile) && (
+            <div style={{ background: 'var(--teal-tint)', border: '1px solid var(--teal)', borderRadius: 10, padding: '12px 16px', marginBottom: 22, color: 'var(--teal-deep)', fontSize: '.88rem', fontWeight: 600 }}>
+              Welcome back — we restored your details. Please re-attach your documents and photo.
+            </div>
+          )}
           {error && (
-            <div style={{ background: 'var(--coral-tint)', border: '1px solid var(--coral)', borderRadius: 10, padding: '12px 16px', marginBottom: 22, color: 'var(--coral-deep)', fontSize: '.88rem', fontWeight: 600 }}>
+            <div ref={errorRef} style={{ background: 'var(--coral-tint)', border: '1px solid var(--coral)', borderRadius: 10, padding: '12px 16px', marginBottom: 22, color: 'var(--coral-deep)', fontSize: '.88rem', fontWeight: 600 }}>
               {error}
             </div>
           )}
@@ -307,7 +381,7 @@ export default function RegisterPage() {
             </Field>
             <Field label="Course / programme name" required>
               <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
-                Enter the exact programme name as written on your admission letter.
+                Enter the exact programme name as written on your final admission document.
               </p>
               <input
                 type="text"
@@ -346,32 +420,49 @@ export default function RegisterPage() {
               </p>
               <div
                 onClick={() => passportRef.current?.click()}
-                style={{ ...uploadBox, borderColor: passportFile ? 'var(--teal)' : 'var(--line)', background: passportFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
+                style={{ ...uploadBox, borderColor: fileErrors.passport ? 'var(--coral)' : passportFile ? 'var(--teal)' : 'var(--line)', background: passportFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
               >
                 <input ref={passportRef} type="file" accept=".pdf" style={{ display: 'none' }}
-                  onChange={e => setPassportFile(e.target.files?.[0] ?? null)} />
+                  onChange={e => handleDocFile('passport', e.target.files?.[0] ?? null, e.target)} />
                 <span style={{ fontSize: 22 }}>📄</span>
                 <span style={{ fontSize: '.86rem', fontWeight: 600, color: passportFile ? 'var(--teal-deep)' : 'var(--ink-soft)' }}>
                   {passportFile ? passportFile.name : 'Click to upload passport PDF'}
                 </span>
               </div>
+              <FieldError msg={fileErrors.passport} />
             </Field>
 
-            <Field label="Admission letter (PDF)" required>
-              <p style={{ fontSize: '.78rem', color: 'var(--ink-soft)', marginBottom: 6, lineHeight: 1.4 }}>
-                CoE / CAS / LOA &mdash; Letter of Acceptance / Offer of Place, as applicable to your destination country. PDF, max 2 MB.
-              </p>
+            <Field label={`${admissionLabel(form.country_of_education)} (PDF)`} required>
+              <AcceptanceGuide country={form.country_of_education} />
               <div
                 onClick={() => admissionRef.current?.click()}
-                style={{ ...uploadBox, borderColor: admissionFile ? 'var(--teal)' : 'var(--line)', background: admissionFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
+                style={{ ...uploadBox, borderColor: fileErrors.admission ? 'var(--coral)' : admissionFile ? 'var(--teal)' : 'var(--line)', background: admissionFile ? 'var(--teal-tint)' : 'var(--cream-2)' }}
               >
                 <input ref={admissionRef} type="file" accept=".pdf" style={{ display: 'none' }}
-                  onChange={e => setAdmissionFile(e.target.files?.[0] ?? null)} />
+                  onChange={e => handleDocFile('admission', e.target.files?.[0] ?? null, e.target)} />
                 <span style={{ fontSize: 22 }}>📋</span>
                 <span style={{ fontSize: '.86rem', fontWeight: 600, color: admissionFile ? 'var(--teal-deep)' : 'var(--ink-soft)' }}>
-                  {admissionFile ? admissionFile.name : 'Click to upload admission letter PDF'}
+                  {admissionFile ? admissionFile.name : 'Click to upload your final admission document (PDF)'}
                 </span>
               </div>
+              <FieldError msg={fileErrors.admission} />
+              {admissionFile && /offer/i.test(admissionFile.name) && (
+                <p style={{ color: '#92400E', background: '#FEF3C7', borderRadius: 8, padding: '8px 12px', fontSize: '.8rem', fontWeight: 600, marginTop: 8, lineHeight: 1.4 }}>
+                  This file name says &ldquo;offer&rdquo;. Offer letters are not accepted — please make sure this is your final {form.country_of_education && ACCEPTANCE_DOCS[form.country_of_education] ? ACCEPTANCE_DOCS[form.country_of_education].short : 'admission document'}.
+                </p>
+              )}
+              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 12, cursor: 'pointer', fontSize: '.84rem', lineHeight: 1.45, fontWeight: 600, color: 'var(--ink)' }}>
+                <input
+                  type="checkbox"
+                  checked={docConfirmed}
+                  onChange={e => { setDocConfirmed(e.target.checked); if (e.target.checked) setFileErrors(f => ({ ...f, confirm: undefined })); }}
+                  style={{ marginTop: 3, accentColor: 'var(--teal)', flexShrink: 0 }}
+                />
+                <span>
+                  I confirm this is my <strong>final {ACCEPTANCE_DOCS[form.country_of_education]?.short ?? 'CoE / CAS / LOA / I-20 / IPA (or final admission letter)'}</strong>, not an offer letter.
+                </span>
+              </label>
+              <FieldError msg={fileErrors.confirm} />
             </Field>
 
             <Field label="Profile photo" required>
@@ -399,6 +490,7 @@ export default function RegisterPage() {
                   <span style={{ fontSize: '.84rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Upload photo</span>
                 </button>
               )}
+              <FieldError msg={fileErrors.photo} />
             </Field>
           </Section>
 
@@ -434,6 +526,37 @@ function Field({ label, children, required }: { label: string; children: React.R
       {children}
     </div>
   );
+}
+
+function admissionLabel(country: string) {
+  if (ACCEPTANCE_DOCS[country]) return ACCEPTANCE_DOCS[country].full;
+  return country ? 'Final admission letter' : 'Final admission document (CoE / CAS / LOA / I-20 / IPA)';
+}
+
+function AcceptanceGuide({ country }: { country: string }) {
+  const doc = ACCEPTANCE_DOCS[country];
+  return (
+    <div style={{ background: 'var(--teal-tint)', border: '1px solid var(--teal)', borderRadius: 10, padding: '12px 14px', marginBottom: 10, fontSize: '.8rem', lineHeight: 1.55, color: 'var(--teal-deep)' }}>
+      <div style={{ fontWeight: 800, fontSize: '.86rem', marginBottom: 6 }}>Upload your FINAL letter of acceptance — not your offer letter.</div>
+      <div>
+        <strong>Accepted: </strong>
+        {doc
+          ? `${doc.full}.`
+          : country
+            ? 'your final admission letter (the document confirming your seat after you accepted the offer).'
+            : 'CoE (Australia), CAS (UK), LOA (Canada), I-20 (USA), IPA (Singapore). For Germany and other countries, upload your final admission letter.'}
+      </div>
+      <div><strong>Not accepted: </strong>conditional offer letters, offer emails and fee receipts.</div>
+      <div style={{ marginTop: 6, color: 'var(--ink-soft)' }}>
+        UniMate is for students with a confirmed seat. Applications with an offer letter are rejected and you would have to apply again. PDF, max 2 MB.
+      </div>
+    </div>
+  );
+}
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <p role="alert" style={{ color: 'var(--coral-deep)', fontSize: '.8rem', fontWeight: 600, marginTop: 6, lineHeight: 1.4 }}>{msg}</p>;
 }
 
 function Spinner() {

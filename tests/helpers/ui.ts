@@ -61,6 +61,7 @@ export async function fillRegistration(page: Page, o: FormOpts = {}) {
   await files.nth(0).setInputFiles({ name: 'passport.pdf', mimeType: 'application/pdf', buffer: pdf() });
   await files.nth(1).setInputFiles({ name: 'admission.pdf', mimeType: 'application/pdf', buffer: pdf() });
   await files.nth(2).setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: REAL_PNG });
+  await page.getByLabel(/I confirm this is my final/).check();
 }
 
 export async function submitRegistrationAndConsent(page: Page) {

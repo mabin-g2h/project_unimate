@@ -3,3 +3,13 @@
 // university/city is tagged with a country). These strings must stay identical
 // so country-scoped filtering of universities/cities matches correctly.
 export const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Brazil','Cambodia','Canada','Chile','China','Colombia','Denmark','Egypt','Ethiopia','Finland','France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Japan','Jordan','Kenya','Malaysia','Mexico','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Pakistan','Philippines','Poland','Portugal','Romania','Russia','Saudi Arabia','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Taiwan','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Vietnam','Zimbabwe'];
+
+// The final admission/enrolment document each destination issues once a seat is confirmed.
+// Offer letters are not accepted. Countries not listed upload their final admission letter.
+export const ACCEPTANCE_DOCS: Record<string, { short: string; full: string }> = {
+  Australia: { short: 'CoE', full: 'Confirmation of Enrolment (CoE)' },
+  'United Kingdom': { short: 'CAS', full: 'Confirmation of Acceptance for Studies (CAS)' },
+  Canada: { short: 'LOA', full: 'Letter of Acceptance (LOA)' },
+  'United States': { short: 'I-20', full: 'Form I-20 (Certificate of Eligibility)' },
+  Singapore: { short: 'IPA', full: 'In-Principle Approval (IPA) letter' },
+};

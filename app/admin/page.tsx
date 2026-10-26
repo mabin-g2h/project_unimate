@@ -7,7 +7,7 @@ import AppLogo from '@/app/components/AppLogo';
 import LogsPanel from '@/app/components/LogsPanel';
 import Toast, { useToast } from '@/app/components/Toast';
 import RevokeModal from '@/app/components/RevokeModal';
-import { COUNTRIES } from '@/lib/countries';
+import { COUNTRIES, ACCEPTANCE_DOCS } from '@/lib/countries';
 import { computeExpiry, isValidDateString } from '@/lib/account';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -658,7 +658,7 @@ export default function AdminPage() {
                         <a href={selected.passport_url!} target="_blank" rel="noreferrer" style={docBtn}>📄 View Passport</a>
                       )}
                       {selected.admission_letter_url && (
-                        <a href={selected.admission_letter_url!} target="_blank" rel="noreferrer" style={docBtn}>📋 Admission Letter</a>
+                        <a href={selected.admission_letter_url!} target="_blank" rel="noreferrer" style={docBtn}>📋 View {ACCEPTANCE_DOCS[selected.country_of_education ?? '']?.short ?? 'Admission Letter'}</a>
                       )}
                       {!selected.passport_url && !selected.admission_letter_url && (
                         <span style={{ color: 'var(--ink-faint)', fontSize: '.86rem' }}>Documents deleted after review</span>

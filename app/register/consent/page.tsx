@@ -9,7 +9,7 @@ const CONSENTS = [
   {
     id: 'document_storage',
     title: 'Document Storage & Verification',
-    text: 'I consent to UniMate securely storing my passport and admission letter for identity verification by the admin team. These documents will be permanently deleted from our servers once my application is reviewed.',
+    text: 'I consent to UniMate securely storing my passport and final admission document for identity verification by the admin team. These documents will be permanently deleted from our servers once my application is reviewed.',
   },
   {
     id: 'profile_picture',
@@ -59,16 +59,29 @@ export default function ConsentPage() {
     fd.append('profile_picture', data.profileFile);
     fd.append('consents_accepted', 'true');
 
-    const res = await fetch('/api/student/register', { method: 'POST', body: fd });
-    const json = await res.json();
-    setSubmitting(false);
+    try {
+      const res = await fetch('/api/student/register', { method: 'POST', body: fd });
+      // Read as text first: an oversized upload is rejected by the platform with a
+      // non-JSON body before our route runs.
+      const raw = await res.text();
+      let json: { error?: string } = {};
+      try { json = JSON.parse(raw); } catch { /* non-JSON body */ }
 
-    if (!res.ok) {
-      setError(json.error ?? 'Submission failed. Please try again.');
-      return;
+      if (!res.ok) {
+        setError(
+          res.status === 413
+            ? 'Your files are too large to upload together. Each PDF must be under 2 MB — go back, attach smaller files and try again.'
+            : json.error ?? 'Submission failed. Please try again.',
+        );
+        return;
+      }
+      clear();
+      router.push('/pending');
+    } catch {
+      setError('We could not reach the server. Please check your connection and try again — your details are still here.');
+    } finally {
+      setSubmitting(false);
     }
-    clear();
-    router.push('/pending');
   }
 
   return (
@@ -105,7 +118,7 @@ export default function ConsentPage() {
           <SummaryRow label="Degree" value={data.form.degree_level} />
           <SummaryRow label="City" value={data.form.city} />
           <SummaryRow label="Gender" value={data.form.gender} />
-          <SummaryRow label="Documents" value="Passport, Admission letter, Photo" />
+          <SummaryRow label="Documents" value="Passport, Final admission document, Photo" />
         </div>
       </div>
 
