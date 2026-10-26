@@ -31,10 +31,17 @@ interface RegistrationContextValue {
 
 const RegistrationContext = createContext<RegistrationContextValue | null>(null);
 
+// sessionStorage key for the text-only form draft (files are never stored).
+export const DRAFT_KEY = 'unimate:register-draft';
+
 export function RegistrationProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<RegistrationData | null>(null);
+  const clear = () => {
+    setData(null);
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* storage unavailable */ }
+  };
   return (
-    <RegistrationContext.Provider value={{ data, setData, clear: () => setData(null) }}>
+    <RegistrationContext.Provider value={{ data, setData, clear }}>
       {children}
     </RegistrationContext.Provider>
   );

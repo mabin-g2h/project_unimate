@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   // orphaned blobs.
   const passportResult  = await validateFile('passport',         'Passport',        PDF_MAX, '2 MB', ['pdf'],          'PDF');
   if (passportResult instanceof NextResponse) return passportResult;
-  const admissionResult = await validateFile('admission_letter', 'Admission letter', PDF_MAX, '2 MB', ['pdf'],          'PDF');
+  const admissionResult = await validateFile('admission_letter', 'Final admission document', PDF_MAX, '2 MB', ['pdf'],          'PDF');
   if (admissionResult instanceof NextResponse) return admissionResult;
   const profileResult   = await validateFile('profile_picture',  'Profile photo',    IMG_MAX, '1 MB', ['jpeg', 'png'], 'JPEG or PNG image');
   if (profileResult instanceof NextResponse) return profileResult;
@@ -166,7 +166,10 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  await sendRegistrationAcknowledgement(session.email, fullName);
+  // The profile is already saved: a mail failure (logged by deliver()) must not turn this into a 500.
+  try {
+    await sendRegistrationAcknowledgement(session.email, fullName);
+  } catch { /* logged in lib/email.ts deliver() */ }
 
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail) {
