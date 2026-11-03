@@ -3,7 +3,7 @@
 Living document. Update the status checkboxes and the change log as work progresses.
 
 **Status:** All phases executed 2026-10-21 (report: `docs/qa/2026-10-21-report.md`, 35 findings; Critical/High fixed in PR #8, F-30 fixed 2026-10-26, 27 open). The harness is merged to `main` and extended with every behaviour change (latest: registration form + final admission document, PR #9).
-**Last run (2026-10-26, `npm run test:all`):** 79 unit + 254 Playwright (1 skipped), all green; `tsc` and `eslint` clean. "Green" includes the open QA findings, which are written as `test.fail` / `it.fails`.
+**Last run (2026-11-03, `npm run test:all`, branch `feature/registration-client-logging`):** 91 unit + 265 Playwright (1 skipped), all green; `tsc` and `eslint` clean. "Green" includes the open QA findings, which are written as `test.fail` / `it.fails`.
 **Last updated:** 2026-10-26
 
 > **Test branch expiry:** the Neon branch `test/qa-harness` expires **2026-10-28**. After that `npm run test:*` fails until a new branch is created (Neon MCP/console, off `production`), its host is added to `TEST_DB_ALLOWED_HOSTS` and `DATABASE_CONNECTION_STRING` in the gitignored `.env.test` is updated. Extend the expiry instead if you want to avoid this.
@@ -138,10 +138,10 @@ Each run writes `docs/qa/YYYY-MM-DD-report.md` with a summary table and, per fin
 
 ## Open items
 
-- [x] Branch created via Neon MCP: `test/qa-harness` (`br-patient-sky-apa7l3ng`), expires 2026-10-28
+- [x] Branch created via Neon MCP: `test/qa-harness` (`br-patient-sky-apa7l3ng`), expired 2026-10-28. Replaced 2026-11-03 by `preview/registration-logging` (`br-rapid-night-ap41tvzg`): the MCP copies the parent with data, so it was TRUNCATEd straight after creation (host checked against the production marker first); delete it when the work is done
 - [x] Allow-listed host: `ep-round-queen-apdb1d3n-pooler.c-7.us-east-1.aws.neon.tech` (in `.env.test`)
 - [x] Harness committed and merged to `main` in PR #8 (2026-10-21)
-- [ ] `test/qa-harness` expires 2026-10-28 — extend or recreate before then (see the note at the top)
+- [ ] `preview/registration-logging` has no expiry set (the MCP can't set one) — delete it when finished
 
 ## Pre-flight corrections (2026-10-21, from reading the code)
 
@@ -165,4 +165,5 @@ Each run writes `docs/qa/YYYY-MM-DD-report.md` with a summary table and, per fin
 | 2026-10-21 | Migrations 019 (users.token_version) and 020 (rate_limits) applied to production; CRON_SECRET confirmed in Vercel. Fix branch not yet committed/deployed. |
 | 2026-10-21 | PR #8 merged and deployed (fixes + harness). |
 | 2026-10-26 | PR #9: added `tests/e2e/register-form.spec.ts` (11 tests) and an `ACCEPTANCE_DOCS` unit test; `fillRegistration` ticks the new confirmation checkbox. Full run 79 unit + 254 Playwright green. Documented the manual-testing recipe and the `next dev` lock. |
+| 2026-11-03 | Registration client logging + submit retry: `tests/api/client-log.spec.ts` (5), `tests/unit/client-log.test.ts` (8), four consent-submit e2e tests (retry then give-up, recover on retry, lost-response 409 confirmed, first-try 409 not retried) in `register-form.spec.ts`; old "dropped connection" test now expects the 3-attempt message. Full run 91 unit + 265 Playwright (1 skipped) green. New Neon test branch (see above). Migration 021 (unique `student_profiles.user_id`) applied to that branch: `tests/unit/register-duplicate.test.ts` (4) forces the 23505 path, three duplicate-submit tests in `register-validation.spec.ts` (incl. one that holds the first insert open with a temporary DB trigger so the second request really hits the index); the hostile-filename security test now allows the random file-name suffix. |
 | 2026-10-26 | F-30 closed: `CLAUDE.md` now says 65 countries; the unit test asserts 65 (no longer `it.fails`). 27 findings open. |

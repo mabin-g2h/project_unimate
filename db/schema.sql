@@ -20,7 +20,7 @@ CREATE TABLE users (
 
 CREATE TABLE student_profiles (
   id                    SERIAL PRIMARY KEY,
-  user_id               INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id               INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,  -- one profile per user (migration 021); a rejected profile is deleted before re-applying
   full_name             VARCHAR(255),
   phone                 VARCHAR(50),
   country_of_origin     VARCHAR(100),
@@ -277,3 +277,8 @@ CREATE TABLE rate_limits (
 
 -- Migration 020 — rate limiting counters (REQUIRED before deploying login/signup/forgot/reset throttling)
 -- CREATE TABLE IF NOT EXISTS rate_limits ( key TEXT PRIMARY KEY, count INTEGER NOT NULL, window_start TIMESTAMPTZ NOT NULL );
+
+-- Migration 021 — one profile per user (REQUIRED before deploying the register route's duplicate-key handling)
+-- Stops two concurrent submits (e.g. the consent page's network retry racing the first request) from both inserting a profile.
+-- Check first: SELECT user_id FROM student_profiles GROUP BY user_id HAVING count(*) > 1;   (must return no rows; production had 0 on 2026-11-03)
+-- CREATE UNIQUE INDEX IF NOT EXISTS student_profiles_user_id_key ON student_profiles (user_id);

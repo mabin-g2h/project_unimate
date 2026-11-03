@@ -282,7 +282,7 @@ test.describe('uploads', () => {
     const r = await api.post('/api/student/register', { multipart: registerForm({ files: { passport: { name: '../../../../tmp/pwned.pdf', mimeType: 'application/pdf', buffer: bytes } } }) });
     expect(r.status()).toBe(200);
     const [p] = await testSql()`SELECT passport_url FROM student_profiles WHERE user_id = ${user.id}`;
-    expect(p.passport_url).toMatch(/^\/__test_uploads\/\d+_passport_\d+\.pdf$/);
+    expect(p.passport_url).toMatch(/^\/__test_uploads\/\d+_passport_\d+_[0-9a-f]{8}\.pdf$/);
     expect(fs.existsSync('/tmp/pwned.pdf')).toBe(false);
     expect(fs.existsSync(path.join(ROOT, 'public', p.passport_url))).toBe(true);
   });

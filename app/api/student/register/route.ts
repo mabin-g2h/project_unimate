@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { sendRegistrationAcknowledgement, sendAdminRegistrationNotification } from '@/lib/email';
-import { putFile } from '@/lib/storage';
+import { putFile, delFiles } from '@/lib/storage';
+import { randomUUID } from 'node:crypto';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { log } from '@/lib/logger';
 
 export const runtime = 'nodejs';
+
+// Neon surfaces Postgres error 23505 on `.code`; other routes in this repo match it in the message.
+function isUniqueViolation(err: unknown): boolean {
+  const code = (err as { code?: string } | null)?.code;
+  return code === '23505' || (err instanceof Error && /23505|duplicate key/i.test(err.message));
+}
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -112,7 +119,8 @@ export async function POST(request: NextRequest) {
   if (profileResult instanceof NextResponse) return profileResult;
 
   async function saveFile(field: string, file: File, ext: string): Promise<string> {
-    const filename = `${session!.userId}_${field}_${Date.now()}.${ext}`;
+    // Random suffix: two concurrent submits must never share a file name, or the loser's cleanup could delete the winner's file.
+    const filename = `${session!.userId}_${field}_${Date.now()}_${randomUUID().slice(0, 8)}.${ext}`;
     return putFile(filename, file);
   }
 
@@ -148,6 +156,14 @@ export async function POST(request: NextRequest) {
       )
     `;
   } catch (err) {
+    // Unique index on user_id (migration 021): a concurrent submit (e.g. the client's network retry
+    // racing the first request) saved this student's profile first. Our uploads are now orphans, and they
+    // include a passport, so delete them before answering with the same 409 as the up-front check.
+    if (isUniqueViolation(err)) {
+      await delFiles([passportFile, admissionFile, profileFile]).catch(() => {});
+      await log({ level: 'warn', event: 'registration_failed', category: 'registration', message: 'Concurrent duplicate submission blocked by the unique index', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 409, reason: 'duplicate_submission' } });
+      return NextResponse.json({ error: 'You have already submitted a registration.' }, { status: 409 });
+    }
     log({ level: 'error', event: 'registration_error', category: 'registration', message: 'Registration failed — server error during DB insert', email: session.email, userId: session.userId, route: '/api/student/register', metadata: { http_status: 500, error: String(err) } });
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
