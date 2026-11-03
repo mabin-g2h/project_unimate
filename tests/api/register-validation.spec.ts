@@ -34,6 +34,68 @@ test.describe('register: validation', () => {
     expect((await post(api, registerForm())).status()).toBe(409);
   });
 
+  test('simultaneous submissions (a retry racing the first request) leave exactly one profile and no orphaned files', async () => {
+    const { user, api } = await newUnregisteredStudent();
+    // User ids restart on every harness reset, so earlier runs' files share this prefix: diff the folder instead.
+    const dir = path.join(ROOT, 'public', '__test_uploads');
+    const before = new Set(fs.existsSync(dir) ? fs.readdirSync(dir) : []);
+    const results = await Promise.all([1, 2, 3, 4].map(() => post(api, registerForm())));
+    const statuses = results.map(r => r.status()).sort();
+    expect(statuses).toEqual([200, 409, 409, 409]);
+    const sql = testSql();
+    expect(await sql`SELECT 1 FROM student_profiles WHERE user_id = ${user.id}`).toHaveLength(1);
+    // Losers that got past the up-front check uploaded files; those must have been deleted again.
+    const mine = fs.readdirSync(dir).filter(f => !before.has(f));
+    expect(mine).toHaveLength(3);
+    const [p] = await sql`SELECT passport_url, admission_letter_url, profile_picture_url FROM student_profiles WHERE user_id = ${user.id}`;
+    expect(mine.sort()).toEqual([p.admission_letter_url, p.passport_url, p.profile_picture_url].map(u => path.basename(u)).sort());
+  });
+
+  test('a request that passes the up-front check but loses the insert race hits the unique index: 409, uploads deleted, logged', async () => {
+    // Hold the first insert open for 1.5 s (test DB only) so the second request's "already submitted?"
+    // check passes while the first profile is still uncommitted; the second insert then waits on the
+    // unique index and fails with 23505 once the first commits. This exercises the real Neon error shape.
+    const sql = testSql();
+    const cleanup = async () => {
+      await sql`DROP TRIGGER IF EXISTS test_slow_profile_insert ON student_profiles`;
+      await sql`DROP FUNCTION IF EXISTS test_slow_profile_insert()`;
+    };
+    await cleanup();
+    await sql`CREATE FUNCTION test_slow_profile_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(1.5); RETURN NEW; END $$`;
+    await sql`CREATE TRIGGER test_slow_profile_insert BEFORE INSERT ON student_profiles FOR EACH ROW EXECUTE FUNCTION test_slow_profile_insert()`;
+    try {
+      const { user, api } = await newUnregisteredStudent();
+      const dir = path.join(ROOT, 'public', '__test_uploads');
+      const before = new Set(fs.existsSync(dir) ? fs.readdirSync(dir) : []);
+      const first = post(api, registerForm());
+      await new Promise(r => setTimeout(r, 500));
+      const second = post(api, registerForm());
+      const [a, b] = await Promise.all([first, second]);
+      expect([a.status(), b.status()]).toEqual([200, 409]);
+      expect((await b.json()).error).toBe('You have already submitted a registration.');
+
+      expect(await sql`SELECT 1 FROM student_profiles WHERE user_id = ${user.id}`).toHaveLength(1);
+      const logs = await sql`SELECT message, metadata FROM student_error_logs WHERE email = ${user.email} AND event = 'registration_failed'`;
+      expect(logs).toHaveLength(1);
+      expect(logs[0].metadata).toMatchObject({ http_status: 409, reason: 'duplicate_submission' });
+      expect(logs[0].message).toMatch(/unique index/);
+
+      const mine = fs.readdirSync(dir).filter(f => !before.has(f));
+      expect(mine).toHaveLength(3); // the loser's three uploads were removed again
+    } finally {
+      await cleanup();
+    }
+  });
+
+  test('the database itself refuses a second profile for the same user (migration 021)', async () => {
+    const { user } = await newUnregisteredStudent();
+    await seedProfile(user.id);
+    const sql = testSql();
+    await expect(sql`INSERT INTO student_profiles (user_id, full_name) VALUES (${user.id}, 'Second Profile')`)
+      .rejects.toThrow(/duplicate key|23505/i);
+    expect(await sql`SELECT 1 FROM student_profiles WHERE user_id = ${user.id}`).toHaveLength(1);
+  });
+
   test('consent not accepted -> 400', async () => {
     const { api } = await newUnregisteredStudent();
     expect((await post(api, registerForm({ fields: { consents_accepted: 'false' } }))).status()).toBe(400);

@@ -12,13 +12,13 @@ Candidate improvements with the evidence behind them, so the next feature starts
 | B4 | **Prefilled re-apply for rejected students** | Both document rejections (10-17, 10-24) never returned; re-apply is a blank 11-field form plus 3 uploads. Passport + letter are deleted after review (Hard Rule 2) so only text fields can be prefilled. | Expose the student's own profile fields via `/api/auth/me` for `rejected` |
 | B5 | **Admin "wrong document" rejection template + one nudge email ~3 days later** | Rejection reasons are free text ("register again" vs the app's "re-apply"); no follow-up exists. | Country-specific wording from `ACCEPTANCE_DOCS`; dedupe nudge via the activity log |
 | B6 | **Admin visibility of no-form accounts** | Row shows "No form yet" for both unverified and verified-not-submitted; no signup time/deadline; admin student list doesn't auto-refresh (a purged account stayed on screen in a stale tab). | Show verified/created/deadline; hide the "Review →" button for no-form rows |
-| B7 | **Funnel events** (register viewed, consent reached, upload rejected client-side) | Steps between "verified" and "submitted" are invisible; 413s never reach the app. | Needs a small authenticated endpoint; no PII/URLs in metadata |
+| B7 | **Funnel events: page views** (register viewed, consent reached) | Steps between "verified" and "submitted" are invisible. The failure half shipped 2026-11-03 (`client_*` events: upload rejected, validation blocked, 413, network failure, load failure — see CHANGELOG); plain "viewed" events are still missing, so drop-off by step can't be counted. | Reuse `/api/student/client-log` + `CLIENT_EVENTS`; keep PII out of metadata |
 | B8 | **Login tab defaults to sign-in** | 4 students tried Sign In with an unknown email, then signed up seconds later. | Maybe "No account found — create one" on unknown email (watch enumeration policy: signup already returns 409) |
 
 ## Documents and uploads
 | # | Idea | Evidence / why | Notes |
 |---|---|---|---|
-| B9 | **Accept JPG/PNG scans and convert to PDF client-side**, or move uploads to direct-to-Blob | PDF-only + 2 MB cap is a real barrier (2.2 MB letter rejected); students hold phone photos. The 2+2+1 MB maximum sits close to Vercel's 4.5 MB body limit (QA test documents this). | Needs a new dependency or client-side Blob uploads |
+| B9 | **Accept JPG/PNG scans and convert to PDF client-side**, or move uploads to direct-to-Blob | PDF-only + 2 MB cap is a real barrier (2.2 MB letter rejected); students hold phone photos. Real worst case is ~4.1 MB (2 + 2 MB PDFs + a ≤400 px photo), under Vercel's 4.5 MB limit; the nominal 2+2+1 MB maximum (QA test) is not reachable from the form. A 4 MB upload is still long on weak mobile data (see 2026-11-03 incident). | Needs a new dependency or client-side Blob uploads |
 | B10 | **Record which document type the student chose** and show it to the admin | The "final letter" confirmation is client-side only and not stored. | Needs a column (migration 021+) |
 | B11 | Server-side proof the file is a CoE/CAS/… | Only a human checks content today. | OCR is **out of scope** (CLAUDE.md) |
 
@@ -32,3 +32,11 @@ Candidate improvements with the evidence behind them, so the next feature starts
 
 ## Open QA findings
 27 findings from `docs/qa/2026-10-21-report.md` remain open (all Critical/High are fixed). They are `test.fail` / `it.fails` markers in `tests/`; fixing one means removing the marker and updating the report and `docs/testing-plan.md`.
+
+## Registration submit hardening (left open on 2026-11-03)
+
+| # | Idea | Evidence / why | Notes |
+|---|---|---|---|
+| B16 | **Per-attempt timeout on the submit** (e.g. ~90 s) | A stalled upload on weak data hangs on "Submitting…" until the browser gives up; `fetch` has no upload progress, so a slow-but-moving upload could be cut off. | XHR would give progress + timeout |
+| B17 | **Log server-side body/Blob failures** in `/api/student/register` | `request.formData()` (truncated upload) and `putFile` (Blob outage) throw uncaught: a 500 with no `student_error_logs` row. | try/catch + `log()` with `reason: 'body_unreadable' / 'blob_failed'` |
+| B18 | **Correlation id per submit** shared by client `client_*` rows and the server's `registration_submitted` | Would show "client tried 3 times, server saw 1". | Send an id in the FormData; store in log metadata |

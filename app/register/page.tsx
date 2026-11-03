@@ -8,6 +8,7 @@ import 'react-phone-number-input/style.css';
 import { useRegistration, DRAFT_KEY } from './context';
 import AppLogo from '@/app/components/AppLogo';
 import { COUNTRIES, ACCEPTANCE_DOCS } from '@/lib/countries';
+import { reportClient, reportClientOnce, errorInfo } from '@/lib/client-log';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DEGREES = ["Bachelor's Degree", "Postgraduate Certificate", "Postgraduate Diploma", "Master's Degree", "PhD / Doctorate", "Professional Degree", "Other"];
@@ -20,13 +21,13 @@ type DocField = 'passport' | 'admission' | 'photo' | 'confirm';
 
 // Same checks the server runs (size + real %PDF header), done up front so students
 // find out when they pick the file, not after the consent step.
-async function pdfProblem(file: File): Promise<string | null> {
+async function pdfProblem(file: File): Promise<{ reason: 'not_pdf' | 'too_large'; message: string } | null> {
   const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
   if (![0x25, 0x50, 0x44, 0x46].every((b, i) => head[i] === b)) {
-    return 'This must be a PDF. If you have a photo or scan, convert it to PDF first (most phones can do this from the share/print menu or a scanner app).';
+    return { reason: 'not_pdf', message: 'This must be a PDF. If you have a photo or scan, convert it to PDF first (most phones can do this from the share/print menu or a scanner app).' };
   }
   if (file.size > PDF_MAX) {
-    return `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB, over the 2 MB limit. Please export or compress a smaller PDF.`;
+    return { reason: 'too_large', message: `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB, over the 2 MB limit. Please export or compress a smaller PDF.` };
   }
   return null;
 }
@@ -69,6 +70,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { data: registrationData, setData: setRegistrationData } = useRegistration();
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState<FormState>({
     full_name: '', phone: '', country_of_origin: '', country_of_education: '',
@@ -119,6 +121,11 @@ export default function RegisterPage() {
         } catch { /* storage unavailable or draft unreadable */ }
       }
       setLoading(false);
+    }).catch(err => {
+      // Without this the spinner would never go away on a flaky connection.
+      reportClient('client_load_failed', { step: 'me', ...errorInfo(err) });
+      setLoadFailed(true);
+      setLoading(false);
     });
   }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -143,10 +150,12 @@ export default function RegisterPage() {
     const q = encodeURIComponent(country);
     fetch(`/api/options/universities?country=${q}`)
       .then(r => r.json())
-      .then(({ universities: list }) => setUniversities(list ?? []));
+      .then(({ universities: list }) => setUniversities(list ?? []))
+      .catch(err => reportClient('client_load_failed', { step: 'universities', ...errorInfo(err) }));
     fetch(`/api/options/cities?country=${q}`)
       .then(r => r.json())
-      .then(({ cities: list }) => setCities(list ?? []));
+      .then(({ cities: list }) => setCities(list ?? []))
+      .catch(err => reportClient('client_load_failed', { step: 'cities', ...errorInfo(err) }));
   }, [form.country_of_education]);
 
   // "Other" mode is active when the user explicitly picked Other, or when a
@@ -169,15 +178,32 @@ export default function RegisterPage() {
       const reader = new FileReader();
       reader.onload = e => setProfilePreview(e.target?.result as string);
       reader.readAsDataURL(resized);
-    } catch {
+    } catch (err) {
+      reportClient('client_photo_failed', { ...errorInfo(err), file_bytes: file.size });
       setFileErrors(e => ({ ...e, photo: 'We could not read that image. Please choose a different JPEG or PNG photo.' }));
     }
   }
 
   async function handleDocFile(field: 'passport' | 'admission', file: File | null, input: HTMLInputElement) {
-    const problem = file ? await pdfProblem(file) : null;
+    let problem: string | null = null;
+    let accepted: File | null = null;
+    if (file) {
+      try {
+        const found = await pdfProblem(file);
+        if (found) {
+          problem = found.message;
+          reportClient('client_file_rejected', { field, reason: found.reason, file_bytes: file.size });
+        } else {
+          // Hold the bytes in memory now. A file straight from the Android picker (WhatsApp, Drive,
+          // Downloads) can become unreadable by submit time, which makes the upload fail.
+          accepted = new File([await file.arrayBuffer()], file.name, { type: file.type });
+        }
+      } catch (err) {
+        problem = 'We could not read that file. Please save it to your phone storage and pick it again.';
+        reportClient('client_file_unreadable', { field, ...errorInfo(err), file_bytes: file.size });
+      }
+    }
     setFileErrors(e => ({ ...e, [field]: problem ?? undefined }));
-    const accepted = problem ? null : file;
     if (field === 'passport') setPassportFile(accepted); else setAdmissionFile(accepted);
     if (problem) input.value = ''; // lets the student re-pick the same file after fixing it
   }
@@ -187,13 +213,20 @@ export default function RegisterPage() {
     setError('');
 
     for (const [k, v] of Object.entries(form)) {
-      if (!v.trim()) { setError(`Please fill in all fields (missing: ${k.replace(/_/g,' ')})`); return; }
+      if (!v.trim()) {
+        reportClientOnce(`validation:${k}`, 'client_validation_error', { field: k, reason: 'missing_field' });
+        setError(`Please fill in all fields (missing: ${k.replace(/_/g,' ')})`); return;
+      }
     }
     if (!isValidPhoneNumber(form.phone)) {
+      reportClientOnce('validation:phone', 'client_validation_error', { field: 'phone', reason: 'invalid_phone' });
       setError('Please enter a valid mobile number (with country code).'); return;
     }
     if (!passportFile || !admissionFile || !profileFile) {
       const missing: Partial<Record<DocField, string>> = {};
+      if (!passportFile) reportClientOnce('validation:passport', 'client_validation_error', { field: 'passport', reason: 'missing_file' });
+      if (!admissionFile) reportClientOnce('validation:admission', 'client_validation_error', { field: 'admission', reason: 'missing_file' });
+      if (!profileFile) reportClientOnce('validation:photo', 'client_validation_error', { field: 'photo', reason: 'missing_file' });
       if (!passportFile) missing.passport = 'Please upload your passport (PDF).';
       if (!admissionFile) missing.admission = 'Please upload your admission letter (PDF).';
       if (!profileFile) missing.photo = 'Please upload a profile photo.';
@@ -205,6 +238,7 @@ export default function RegisterPage() {
       setError('Please fix the highlighted document before continuing.'); return;
     }
     if (!docConfirmed) {
+      reportClientOnce('validation:confirm', 'client_validation_error', { field: 'confirm', reason: 'not_confirmed' });
       const msg = 'Please confirm that your admission document is your final letter of acceptance, not an offer letter.';
       setFileErrors(e => ({ ...e, confirm: msg }));
       setError(msg);
@@ -219,6 +253,18 @@ export default function RegisterPage() {
     setRegistrationData({ form: cleanedForm, passportFile, admissionFile, profileFile });
     router.push('/register/consent');
   }
+
+  if (loadFailed) return (
+    <div className="screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ maxWidth: 420, textAlign: 'center' }}>
+        <p style={{ fontWeight: 700, marginBottom: 8 }}>We could not load the form.</p>
+        <p style={{ color: 'var(--ink-soft)', fontSize: '.9rem', marginBottom: 16 }}>Please check your connection and try again.</p>
+        <button type="button" onClick={() => window.location.reload()} style={{ padding: '12px 22px', borderRadius: 12, border: 'none', background: 'var(--teal)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          Try again
+        </button>
+      </div>
+    </div>
+  );
 
   if (loading) return (
     <div className="screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -24,7 +24,7 @@ Architecture, schema, hard rules and conventions live in `CLAUDE.md`. This file 
 - New env var: add it to the `CLAUDE.md` env list and tell the user to set it in Vercel.
 
 ### Database
-- Schema change = update the `CREATE TABLE` in `db/schema.sql` **and** append the next idempotent migration (after 020, with `IF NOT EXISTS`).
+- Schema change = update the `CREATE TABLE` in `db/schema.sql` **and** append the next idempotent migration (after 021, with `IF NOT EXISTS`).
 - Apply to the Neon **test** branch first. Touch production only with explicit user approval.
 - Never run destructive SQL on a connection you haven't verified is the test branch.
 

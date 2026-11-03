@@ -1,12 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
 import { PASSWORD, seedUser, pdf, png } from '../helpers/api';
 import { uiLogin, fillRegistration, sel, txt } from '../helpers/ui';
+import { testSql } from '../helpers/db';
 
 async function openRegisterForm(page: Page) {
   const u = await seedUser();
   await uiLogin(page, u.email, PASSWORD);
   await page.waitForURL('**/register');
   await expect(txt(page, 'Full name')).toBeVisible();
+  return u;
 }
 
 test.describe('register form: document checks and recovery', () => {
@@ -53,12 +55,17 @@ test.describe('register form: document checks and recovery', () => {
 
 test.describe('consent submit never hangs', () => {
   async function toConsent(page: Page) {
-    await openRegisterForm(page);
+    const u = await openRegisterForm(page);
     await fillRegistration(page);
     await page.getByRole('button', { name: /Continue to Review/ }).click();
     await page.waitForURL('**/register/consent');
     for (const n of [1, 2, 3, 4]) await page.getByText(new RegExp(`^${n}\\. `)).click();
+    return u;
   }
+
+  const logged = async (email: string) =>
+    (await testSql()`SELECT event, metadata FROM student_error_logs WHERE email = ${email} AND event LIKE 'client_%' ORDER BY created_at`)
+      .map(r => r.event as string);
 
   test('a 413 plain-text response shows a clear error and re-enables the button', async ({ page }) => {
     await toConsent(page);
@@ -68,12 +75,59 @@ test.describe('consent submit never hangs', () => {
     await expect(page.getByRole('button', { name: 'Submit Application' })).toBeEnabled();
   });
 
-  test('a dropped connection shows an error and re-enables the button', async ({ page }) => {
-    await toConsent(page);
-    await page.route('**/api/student/register', r => r.abort());
+  test('a dropped connection is retried, then reported and the button re-enabled', async ({ page }) => {
+    const u = await toConsent(page);
+    let attempts = 0;
+    await page.route('**/api/student/register', r => { attempts++; return r.abort('failed'); });
     await page.getByRole('button', { name: 'Submit Application' }).click();
-    await expect(page.getByText(/could not reach the server/)).toBeVisible();
+    await expect(page.getByText(/Connection problem — retrying \(2 of 3\)/)).toBeVisible();
+    await expect(page.getByText(/could not reach the server after 3 tries/)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole('button', { name: 'Submit Application' })).toBeEnabled();
+    expect(attempts).toBe(3);
+    // The last error and the give-up are sent together, so their insert order is not fixed.
+    await expect.poll(async () => (await logged(u.email)).sort(), { timeout: 10_000 }).toEqual([
+      'client_submit_gave_up', 'client_submit_network_error', 'client_submit_network_error',
+      'client_submit_network_error', 'client_submit_retry', 'client_submit_retry',
+    ]);
+  });
+
+  test('a network failure on the first try recovers on the retry and lands on /pending', async ({ page }) => {
+    const u = await toConsent(page);
+    let attempts = 0;
+    await page.route('**/api/student/register', r => (++attempts === 1 ? r.abort('failed') : r.continue()));
+    await page.getByRole('button', { name: 'Submit Application' }).click();
+    await page.waitForURL('**/pending', { timeout: 20_000 });
+    expect(attempts).toBe(2);
+    const sql = testSql();
+    expect(await sql`SELECT 1 FROM student_profiles WHERE user_id = ${u.id}`).toHaveLength(1);
+    await expect.poll(() => logged(u.email), { timeout: 10_000 }).toEqual([
+      'client_submit_network_error', 'client_submit_retry', 'client_submit_recovered',
+    ]);
+  });
+
+  test('a lost response after the server saved the application is confirmed, not shown as a 409', async ({ page }) => {
+    const u = await toConsent(page);
+    let attempts = 0;
+    await page.route('**/api/student/register', async r => {
+      if (++attempts === 1) { await r.fetch(); return r.abort('failed'); } // server saved it, reply lost
+      return r.continue();
+    });
+    await page.getByRole('button', { name: 'Submit Application' }).click();
+    await page.waitForURL('**/pending', { timeout: 20_000 });
+    expect(attempts).toBe(2);
+    expect(await testSql()`SELECT 1 FROM student_profiles WHERE user_id = ${u.id}`).toHaveLength(1);
+    await expect.poll(() => logged(u.email), { timeout: 10_000 }).toEqual([
+      'client_submit_network_error', 'client_submit_retry', 'client_submit_duplicate_ok',
+    ]);
+  });
+
+  test('a 409 on the first try is shown as before and never retried', async ({ page }) => {
+    await toConsent(page);
+    let attempts = 0;
+    await page.route('**/api/student/register', r => { attempts++; return r.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'You have already submitted a registration.' }) }); });
+    await page.getByRole('button', { name: 'Submit Application' }).click();
+    await expect(page.getByText('You have already submitted a registration.')).toBeVisible();
+    expect(attempts).toBe(1);
   });
 
   test('a non-JSON 500 shows the generic error instead of hanging', async ({ page }) => {
