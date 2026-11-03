@@ -6,7 +6,7 @@ Living document. Update the status checkboxes and the change log as work progres
 **Last run (2026-11-03, `npm run test:all`, branch `feature/registration-client-logging`):** 91 unit + 265 Playwright (1 skipped), all green; `tsc` and `eslint` clean. "Green" includes the open QA findings, which are written as `test.fail` / `it.fails`.
 **Last updated:** 2026-10-26
 
-> **Test branch expiry:** the Neon branch `test/qa-harness` expires **2026-10-28**. After that `npm run test:*` fails until a new branch is created (Neon MCP/console, off `production`), its host is added to `TEST_DB_ALLOWED_HOSTS` and `DATABASE_CONNECTION_STRING` in the gitignored `.env.test` is updated. Extend the expiry instead if you want to avoid this.
+> **No test branch exists right now.** `test/qa-harness` expired 2026-10-28 and its replacement `preview/registration-logging` was deleted on 2026-11-03, so `npm run test:*` fails until you create one. Create a branch off `production` (Neon MCP/console; the MCP copies the data, which the harness's global setup TRUNCATEs on its first run, but verify the host is not production first), put its pooled host in `TEST_DB_ALLOWED_HOSTS` and its connection string in `DATABASE_CONNECTION_STRING` in the gitignored `.env.test`, and delete the branch when you are done. A fresh branch off production already has migrations up to 021 (unique `student_profiles.user_id`); the harness needs that schema, since it only truncates and reseeds.
 
 ## Running the suites
 
@@ -138,10 +138,10 @@ Each run writes `docs/qa/YYYY-MM-DD-report.md` with a summary table and, per fin
 
 ## Open items
 
-- [x] Branch created via Neon MCP: `test/qa-harness` (`br-patient-sky-apa7l3ng`), expired 2026-10-28. Replaced 2026-11-03 by `preview/registration-logging` (`br-rapid-night-ap41tvzg`): the MCP copies the parent with data, so it was TRUNCATEd straight after creation (host checked against the production marker first); delete it when the work is done
-- [x] Allow-listed host: `ep-round-queen-apdb1d3n-pooler.c-7.us-east-1.aws.neon.tech` (in `.env.test`)
+- [x] Branch created via Neon MCP: `test/qa-harness` (`br-patient-sky-apa7l3ng`), expired 2026-10-28. Replaced 2026-11-03 by `preview/registration-logging` for the registration client-logging work (PR #11), then deleted the same day
+- [x] Allow-listed host lives in `.env.test` (`TEST_DB_ALLOWED_HOSTS`); it currently points at a deleted branch, so update it with the next branch
 - [x] Harness committed and merged to `main` in PR #8 (2026-10-21)
-- [ ] `preview/registration-logging` has no expiry set (the MCP can't set one) — delete it when finished
+- [ ] Create a new test branch before the next DB-backed run (see the note at the top); the Neon MCP can't set an expiry, so delete it when finished
 
 ## Pre-flight corrections (2026-10-21, from reading the code)
 
