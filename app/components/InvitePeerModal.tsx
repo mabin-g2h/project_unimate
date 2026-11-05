@@ -13,6 +13,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function InvitePeerModal({ onClose, onToast }: Props) {
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -25,6 +26,7 @@ export default function InvitePeerModal({ onClose, onToast }: Props) {
   const send = async () => {
     if (!valid || saving) return;
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch("/api/students/invite-peer", {
         method: "POST",
@@ -36,10 +38,10 @@ export default function InvitePeerModal({ onClose, onToast }: Props) {
         onToast("Invite sent", "We've emailed your peer an invitation to join UniMate.");
         onClose();
       } else {
-        onToast("Couldn't send invite", data.error ?? "Something went wrong. Please try again.");
+        setError(data.error ?? "Something went wrong. Please try again.");
       }
     } catch {
-      onToast("Couldn't send invite", "Network error. Please try again.");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setSaving(false);
     }
@@ -124,11 +126,20 @@ export default function InvitePeerModal({ onClose, onToast }: Props) {
                   value={email}
                   placeholder="peer@example.com"
                   autoFocus
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => { setEmail(e.target.value); setError(null); }}
                   onKeyDown={e => { if (e.key === "Enter") send(); }}
                   style={inputCss}
                 />
               </label>
+
+              {error && (
+                <div role="alert" style={{
+                  background: "var(--coral-tint)", color: "var(--coral-deep)", borderRadius: 10,
+                  padding: "10px 14px", fontSize: ".86rem", fontWeight: 600, lineHeight: 1.4,
+                }}>
+                  {error}
+                </div>
+              )}
 
               <button
                 onClick={send}

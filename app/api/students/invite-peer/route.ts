@@ -10,7 +10,12 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { email } = (await req.json()) as { email?: string };
+  let email: string | undefined;
+  try {
+    ({ email } = (await req.json()) as { email?: string });
+  } catch {
+    return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 });
+  }
   const normalised = (email ?? '').trim().toLowerCase();
 
   if (!normalised || !EMAIL_RE.test(normalised)) {
@@ -59,12 +64,16 @@ export async function POST(req: Request) {
   const inviterName: string = profile[0]?.full_name ?? 'A peer';
   const universityName: string | null = profile[0]?.university_name ?? null;
 
-  await sql`INSERT INTO peer_invites (email, invited_by) VALUES (${normalised}, ${session.userId})`;
+  const [inserted] = await sql`
+    INSERT INTO peer_invites (email, invited_by) VALUES (${normalised}, ${session.userId}) RETURNING id
+  `;
 
   try {
     await sendPeerInviteEmail(normalised, inviterName, universityName);
   } catch (err) {
     console.error('Failed to send peer invite email:', err);
+    // The mail never went out: free the daily slot and the 7-day re-invite block.
+    await sql`DELETE FROM peer_invites WHERE id = ${inserted.id}`.catch(() => {});
     return NextResponse.json(
       { error: "We couldn't send the invitation right now. Please try again later." },
       { status: 502 },

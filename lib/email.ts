@@ -164,44 +164,50 @@ export async function sendAdminInviteEmail(to: string, inviteUrl: string) {
 
 export async function sendPeerInviteEmail(to: string, inviterName: string, universityName: string | null) {
   const safeName = escapeHtml(inviterName);
-  const url = `${process.env.APP_URL}/login`;
+  const url = `${process.env.APP_URL}/login?mode=signup`;
   const subject = universityName
-    ? `Someone studying at ${universityName} wants to meet you 👋`
-    : 'Someone wants you to join them on UniMate 👋';
+    ? `${inviterName} from ${universityName} invited you to UniMate 👋`
+    : `${inviterName} invited you to UniMate 👋`;
+  const row = (emoji: string, text: string) =>
+    `<tr><td style="color:#6E6E73;font-size:15px;line-height:1.7;padding:0 0 8px;">${emoji} &nbsp;${text}</td></tr>`;
+  const step = (n: number, text: string) =>
+    `<tr><td style="color:#6E6E73;font-size:15px;line-height:1.7;padding:0 0 8px;"><strong style="color:${BRAND};">${n}.</strong> &nbsp;${text}</td></tr>`;
   await deliver('peer_invite', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
     subject,
     html: wrap(`
-      <p style="color:#1D1D1F;font-size:17px;font-weight:700;margin:0 0 16px;">Hey there,</p>
+      <p style="color:#1D1D1F;font-size:17px;font-weight:700;margin:0 0 16px;">Hi there 👋</p>
       <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0 0 16px;">
-        Going abroad to study is one of the biggest things you'll ever do. New country, new campus, new everything — and somehow, you're supposed to figure it all out on your own?
+        <strong>${safeName}</strong> is getting ready to study abroad and thought of you. They're on <strong>UniMate</strong>, a friendly community for students about to start a new chapter in a new country, and they'd love for you to join.
       </p>
-      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0 0 28px;">
-        <strong>${safeName}</strong> didn't think so. That's why they invited you to <strong>UniMate</strong> — a space built for students heading abroad, so the bravest journey of your life doesn't have to begin alone.
+      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0 0 24px;">
+        Moving to a new country is a lot easier when you already know a few faces. UniMate helps you find them before you land:
       </p>
-
-      <h2 style="color:#1D1D1F;font-size:19px;font-weight:800;margin:0 0 10px;">Find your people. Before you even land.</h2>
-      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0 0 16px;">
-        UniMate matches you with verified peers who are headed exactly where you are —
-      </p>
-      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
-        <tr><td style="color:#6E6E73;font-size:15px;line-height:1.9;padding:0;">✈️ &nbsp;<strong>Same flight</strong> — find students booked on your exact route and travel together</td></tr>
-        <tr><td style="color:#6E6E73;font-size:15px;line-height:1.9;padding:0;">🎓 &nbsp;<strong>Same university &amp; city</strong> — connect before orientation week</td></tr>
-        <tr><td style="color:#6E6E73;font-size:15px;line-height:1.9;padding:0;">📚 &nbsp;<strong>Same course &amp; intake year</strong> — your future study group is already out there</td></tr>
-        <tr><td style="color:#6E6E73;font-size:15px;line-height:1.9;padding:0;">🌍 &nbsp;<strong>Same country</strong> — a community that gets what you're walking into</td></tr>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+        ${row('🎓', '<strong>Same university &amp; city</strong>: meet people before orientation week')}
+        ${row('✈️', '<strong>Same flight</strong>: travel with someone instead of landing alone')}
+        ${row('📚', '<strong>Same course &amp; intake</strong>: your future study group is already here')}
+        ${row('🔒', '<strong>Your privacy, your call</strong>: your phone number stays hidden unless you choose to share it')}
       </table>
 
-      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0 0 28px;">
-        And once you've found your mate? We've got the rest covered too — <strong>accommodation, forex cards, flight bookings</strong>, and a whole lot more to make the move smoother.
+      <a href="${url}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-bottom:12px;">
+        Create my free account →
+      </a>
+      <p style="color:#8E8E93;font-size:13px;line-height:1.5;margin:0 0 28px;">
+        Button not working? Copy this link into your browser:<br>
+        <a href="${url}" style="color:${BRAND};word-break:break-all;">${url}</a>
       </p>
 
-      <a href="${url}" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;margin-bottom:28px;">
-        Join UniMate — It's Free →
-      </a>
+      <h2 style="color:#1D1D1F;font-size:17px;font-weight:800;margin:0 0 10px;">Getting started takes about 5 minutes</h2>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+        ${step(1, 'Create your account and verify your email')}
+        ${step(2, 'Fill in your course details and upload your <strong>final</strong> admission document (CoE, CAS, LOA, I-20, IPA or your final admission letter, not an offer letter)')}
+        ${step(3, 'Our team reviews it, and once approved you can meet your FlyMates')}
+      </table>
 
-      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0 0 4px;">No pressure. No noise. Just your people.</p>
-      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0;">See you on the other side ✨</p>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:0 0 4px;">UniMate is for students who already have a confirmed seat. If that's not you yet, no worries. Just save this email for when it is.</p>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.65;margin:12px 0 0;">See you on the other side ✨</p>
     `),
   });
 }

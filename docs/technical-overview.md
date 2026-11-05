@@ -138,7 +138,7 @@ A rejected student's account is kept in the database with `status = 'rejected'` 
 Approved students land on the main dashboard, which shows:
 - A **Boarding Pass** card displaying their profile (round avatar, destination city) and flight details. When flight details are set, an animated countdown pill ("BOARDS IN N DAYS") appears on the stub, computed from the travel date on every load.
 - A **FlyMate Explorer** for discovering peers heading to the same destination country. Peers are filtered client-side by five composable dropdowns — University, City, Course, Degree, Intake — with active-filter chips, search, and sort. A "Filters" drawer opens on mobile.
-- A **Services Hub** linking to upcoming platform features
+- (Services Hub removed 2026-11-05; see CHANGELOG)
 
 **Flight Details**
 Students can enter their departure airport, arrival airport, travel date, and airline. This data powers the peer directory — peer cards show a **"Same flight!"** badge when all four fields match the viewer, or **"Same day"** when only the travel date matches.

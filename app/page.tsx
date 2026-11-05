@@ -188,30 +188,20 @@ export default function Home() {
             />
           )}
 
-          {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 14, marginTop: 16 }} className="stats-grid">
-            <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--teal)" }}>{atUniversityCount}</div>
-              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>At your university</div>
-            </div>
-            <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--teal)" }}>{doingCourseCount}</div>
-              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Doing your course</div>
-            </div>
-            <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1 }}>{sameDegreeCount}</div>
-              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Doing same degree</div>
-            </div>
-            <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1 }}>{inIntakeCount}</div>
-              <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>In your intake</div>
-            </div>
-            {sameFlightCount !== null && (
-              <div style={{ background: "var(--cream-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)", padding: "16px 18px" }}>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.8rem", letterSpacing: "-.02em", lineHeight: 1, color: "var(--coral-deep)" }}>{sameFlightCount}</div>
-                <div style={{ fontSize: ".78rem", color: "var(--ink-soft)", fontWeight: 600, marginTop: 4 }}>Same flight</div>
+          {/* Stats — cards stretch to the full boarding-pass width whether 4 or 5 render */}
+          <div className="stats-grid">
+            {[
+              { n: atUniversityCount, label: "At your university", color: "var(--teal)" },
+              { n: doingCourseCount, label: "Doing your course", color: "var(--teal)" },
+              { n: sameDegreeCount, label: "Doing same degree", color: "var(--teal)" },
+              { n: inIntakeCount, label: "In your intake", color: "var(--teal)" },
+              ...(sameFlightCount !== null ? [{ n: sameFlightCount, label: "Same flight", color: "var(--coral-deep)" }] : []),
+            ].map(st => (
+              <div key={st.label} className="stat-card" style={{ ["--stat" as string]: st.color }}>
+                <div className="stat-num">{st.n}</div>
+                <div className="stat-label">{st.label}</div>
               </div>
-            )}
+            ))}
           </div>
 
         </div>
@@ -246,19 +236,23 @@ export default function Home() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes rise { to { opacity: 1; transform: translateY(0) } }
-        @media (max-width: 680px) { .stats-grid { grid-template-columns: repeat(2,1fr) !important; } }
-        @media (max-width: 360px) { .stats-grid { grid-template-columns: 1fr !important; } }
-        .svc-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--teal) !important; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 16px; }
+        .stat-card { position: relative; background: var(--paper); border: 1px solid var(--line-soft); border-radius: var(--radius-sm); padding: 18px 20px 16px; box-shadow: var(--shadow); overflow: hidden; }
+        .stat-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--stat); opacity: .85; }
+        .stat-num { font-family: var(--font-display); font-weight: 800; font-size: 2rem; letter-spacing: -.02em; line-height: 1; color: var(--stat); }
+        .stat-label { font-size: .82rem; color: var(--ink-soft); font-weight: 600; margin-top: 6px; }
+        @media (max-width: 680px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 360px) { .stats-grid { grid-template-columns: 1fr; } }
+        .invite-pill { display:inline-flex; align-items:center; gap:7px; font-family:var(--font-body); font-weight:700; font-size:.84rem; color:var(--teal); background:var(--paper); border:1px solid var(--teal); border-radius:980px; padding:9px 16px; min-height:40px; cursor:pointer; transition:background .18s, color .18s; white-space:nowrap; }
+        .invite-pill:hover { background:var(--teal-tint); }
+        .invite-pill-solid { background:var(--teal); color:#fff; }
+        .invite-pill-solid:hover { background:var(--teal-deep); }
         .card:hover { transform: translateY(-2px) !important; box-shadow: 0 8px 28px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.07) !important; }
         .hide-mobile { display: flex; flex-direction: column; }
         @media (max-width: 640px) { .hide-mobile { display: none; } }
         /* Explorer 2-col responsive */
         .filters-toggle-bar { display: none; }
         .filter-row-desktop { display: block; }
-        @media (max-width: 860px) {
-          .explorer-grid { grid-template-columns: 1fr !important; }
-          .service-sidebar { display: none !important; }
-        }
         @media (max-width: 640px) {
           .filter-row-desktop { display: none !important; }
           .filters-toggle-bar { display: flex !important; }

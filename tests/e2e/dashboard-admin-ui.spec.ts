@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { emailFor, PASSWORD, seedUser, seedProfile, ctx, adminCtx, studentCtx, finding } from '../helpers/api';
 import { testSql } from '../helpers/db';
-import { waitForMail } from '../helpers/mail';
+import { waitForMail, mailHtml } from '../helpers/mail';
 import { uiLogin, uiAdminLogin, acceptDialogs } from '../helpers/ui';
 
 const iso = (n: number) => new Date(Date.now() + n * 86400_000).toISOString().slice(0, 10);
@@ -116,15 +116,30 @@ test('9. invite a peer from the dashboard', async ({ page }) => {
   const u = await seedUser();
   await seedProfile(u.id, { name: 'Inviter UI' });
   await studentLogin(page, u.email);
+  // the fake service cards are gone and the invite lives in the FlyMates heading row
+  await expect(page.getByText('Request now')).toHaveCount(0);
+  await expect(page.getByText('Find Accommodation')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(page.getByRole('button', { name: /Invite a peer/ })).toBeVisible(); // reachable on phones
   await page.getByRole('button', { name: /Invite a peer/ }).click();
   const box = page.getByPlaceholder('peer@example.com');
+  // an already-registered address shows its error inline, inside the modal
+  await box.fill((await seedUser()).email);
+  await page.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(page.getByText('This person already has a UniMate account.')).toBeVisible();
   await box.fill('not-an-email');
   await expect(page.getByRole('button', { name: 'Send invitation' })).toBeDisabled();
   const to = emailFor('uiinvite');
   await box.fill(to);
   await page.getByRole('button', { name: 'Send invitation' }).click();
-  await waitForMail(to, '');
+  const invite = await waitForMail(to, '');
+  expect(await mailHtml(invite.ID)).toContain('/login?mode=signup');
   await expect(page.getByPlaceholder('peer@example.com')).toHaveCount(0); // modal closed on success
+
+  // the email's link opens the sign-up tab directly
+  await page.context().clearCookies();
+  await page.goto('/login?mode=signup');
+  await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
 });
 
 test.describe('10. Logs tab', () => {
