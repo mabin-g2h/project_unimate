@@ -31,7 +31,7 @@ Related: `AGENTS.md` (how to work in the repo, "Done means"), `docs/testing-plan
 
 ## 5. You confirm, then the full suite
 - The change is previewed and approved by you first.
-- Then the full run: `npm run test:unit`, `npx playwright test` (about 12 minutes), `npx tsc --noEmit`, `npm run lint`.
+- Then the full run locally: `npm run test:unit`, `npx playwright test` (about 12 minutes), `npx tsc --noEmit`, `npm run lint`. CI repeats the same checks on every pull request (`.github/workflows/ci.yml`; Playwright only when app code changed, against its own throwaway Neon branch), and the PR cannot be merged until they are green.
 - Report results honestly, including anything skipped (e.g. the `ALLOW_MAIL_OUTAGE=1` test) and anything not verifiable locally (real Gmail delivery).
 
 ## 6. Docs and commit
@@ -41,7 +41,8 @@ Related: `AGENTS.md` (how to work in the repo, "Done means"), `docs/testing-plan
 
 ## 7. Push, PR, merge
 - Push the branch, then open the PR against `main` (`/new-pr`): why, what, tests, deploy notes. Pushing a new branch is done by the user (`! git push -u origin <branch>`).
-- Squash-merge. Then `git checkout main && git pull`, and delete the branch locally and on GitHub.
+- Wait for the CI checks (`Checks (tsc, lint, unit)`, `Playwright (api, e2e, security)`) to be green. `main` is protected, so a failing or missing check blocks the merge.
+- Squash-merge (the only enabled method; GitHub deletes the remote branch automatically). Then `git checkout main && git pull`, and delete the local branch and any worktree.
 - After the deploy: check the Vercel build is green and smoke-test the change. For anything that sends email, send one real message to yourself.
 - Schema changes: idempotent migration appended to `db/schema.sql`, applied to the test branch first and to production only with explicit approval.
 
@@ -54,4 +55,4 @@ Related: `AGENTS.md` (how to work in the repo, "Done means"), `docs/testing-plan
 - Never test against production data or env.
 - Ask before anything outward-facing or hard to undo: push, merge, deleting branches, sending real email.
 - Never print or write the `origin` remote URL (it may hold a token).
-- Never commit to `main`.
+- Never commit to `main`. It is protected by the GitHub ruleset `Protect main`: a pull request is required, the two CI checks must pass, force pushes and deletion are blocked, and nobody (including the owner) can bypass it. To change the rule in an emergency, edit the ruleset in the repo settings and restore it afterwards.

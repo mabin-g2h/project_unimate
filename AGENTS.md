@@ -48,7 +48,7 @@ Architecture, schema, hard rules and conventions live in `CLAUDE.md`. This file 
 5. `docs/CHANGELOG.md` entry added (what, why/evidence, tests, deploy notes). Move any shipped idea out of `docs/backlog.md`; check both files before designing a feature.
 
 ### Git
-- Feature branch, never commit to `main`. PRs target `main` (`/new-pr`). Commit only when asked.
+- Feature branch, never commit to `main`. PRs target `main` (`/new-pr`). Commit only when asked. `main` is protected by the `Protect main` ruleset (PR required, CI checks `Checks (tsc, lint, unit)` and `Playwright (api, e2e, security)` must pass, no force push or deletion, no bypass); only squash merging is enabled.
 - Imperative subject, no `Co-Authored-By` or generated-by trailers. Identity is `mabin-g2h` (`/git-connect` if it looks wrong).
 - Never print or write the `origin` URL (it may hold a token).
 - Don't commit `.env*`, `.claude/`, `public/__test_uploads/`, `test-results/`, `playwright-report/`.
