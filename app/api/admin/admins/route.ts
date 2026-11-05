@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuid } from 'uuid';
 import { getSession } from '@/lib/auth';
 import { sql } from '@/lib/db';
-import { sendAdminInviteEmail } from '@/lib/email';
+import { sendAdminInviteEmail, appUrl } from '@/lib/email';
 import { log } from '@/lib/logger';
 
 export async function GET() {
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     VALUES (${normalised}, ${token}, ${expiresAt.toISOString()}, ${session.userId})
   `;
 
-  const inviteUrl = `${process.env.APP_URL}/accept-invite?token=${token}`;
+  const inviteUrl = `${appUrl()}/accept-invite?token=${token}`;
   await log({ level: 'info', event: 'admin_invited', category: 'admin', message: 'Admin invitation sent', email: normalised, actorEmail: session.email, userId: session.userId, route: '/api/admin/admins' });
 
   try {

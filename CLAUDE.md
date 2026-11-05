@@ -178,15 +178,18 @@ DATABASE_CONNECTION_STRING   # Neon PostgreSQL connection string
 JWT_SECRET                   # Signing key for auth-token JWT
 GMAIL_USER                   # Gmail sender address
 GMAIL_APP_PASSWORD           # Gmail app password (not account password)
-APP_URL                      # Base URL used in email links (e.g. http://localhost:3000)
+APP_URL                      # Base URL used in email links (e.g. http://localhost:3000). Production only: when unset, `appUrl()` in lib/email.ts falls back to https://$VERCEL_URL (Vercel previews)
 ADMIN_EMAIL                  # Email auto-assigned role='admin' at signup
 BLOB_READ_WRITE_TOKEN        # Vercel Blob store token (auto-set by Vercel; add to .env.local for dev)
 CRON_SECRET                  # Secret for /api/auth/cleanup cron endpoint — set in Vercel project settings + .env.local. REQUIRED: the endpoint returns 401 to everyone when it is unset/empty (fails closed)
-SMTP_HOST / SMTP_PORT        # Test seam only: send mail to Mailpit instead of Gmail (see lib/email.ts)
+SMTP_HOST / SMTP_PORT        # Mail-sink seam: send mail to an SMTP sink instead of Gmail (see lib/email.ts). Alone = plain SMTP, no auth/TLS (Mailpit in tests); never set in Production
+SMTP_USER / SMTP_PASS        # With SMTP_HOST: authenticated SMTP + STARTTLS. Used by Vercel Preview (Ethereal mail catcher)
 STORAGE_DRIVER               # Test seam only: `local` stores uploads under public/__test_uploads/
 RATE_LIMIT_IP_MAX            # Test seam only: overrides every per-IP rate limit
 ACCOUNT_LIFESPAN_DAYS        # Optional: days after course_start_date before access expires (default: 30); changing only affects future approvals — expiry_date is snapshotted in DB
 ```
+
+**Vercel environments.** Production and Preview must never share data or secrets. Production-only: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `APP_URL`, and the production values of `DATABASE_CONNECTION_STRING`, `JWT_SECRET`, `ADMIN_EMAIL`, `CRON_SECRET`, `BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY`. Preview has its own values for all of those: the Neon `preview` branch (fake data only, migrations applied by hand), its own `JWT_SECRET`/`CRON_SECRET`, `ADMIN_EMAIL=preview-admin@unimate.test`, a fake `GMAIL_USER` (no `GMAIL_APP_PASSWORD`), `SMTP_*` pointing at Ethereal, and a separate Blob store. A new variable must be added to both environments deliberately; never tick Preview on a production secret. Preview URLs sit behind Vercel Authentication.
 
 ## Conventions
 

@@ -6,7 +6,21 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
-## 2026-11-05 — CI: tests run automatically on every pull request (PR #17, not yet merged)
+## 2026-11-05 — Vercel previews no longer use production data, secrets or email (PR #18, not yet merged)
+**Why:** `vercel env ls` showed `DATABASE_CONNECTION_STRING`, `JWT_SECRET`, `GMAIL_*`, `ADMIN_EMAIL`, `CRON_SECRET` and the Blob store set for both Production and Preview. Every pushed branch built a preview that read and wrote live student data, sent real email, accepted production-signed tokens, treated the production admin email as admin and accepted the production cron secret (workflow gap #3). `APP_URL` was Production-only, so preview email links had no base URL.
+
+**What changed**
+- **Vercel (infrastructure, not in git):** the 8 shared variables are Production-only. Preview has its own: a Neon `preview` branch, new `JWT_SECRET` and `CRON_SECRET`, `ADMIN_EMAIL=preview-admin@unimate.test`, a fake `GMAIL_USER` (no app password), `SMTP_*` for an Ethereal mail catcher, and a separate Blob store (`BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY`).
+- **Neon `preview` branch** (`br-tiny-star-apci7pli`): created off production, then immediately truncated (users, profiles, flights, logs, invites, rate limits) and given one fake admin. Reference tables (universities, cities, airports, airlines) kept: public data. Migrations must be applied to it by hand when the schema changes.
+- `lib/email.ts`: `SMTP_USER`/`SMTP_PASS` with `SMTP_HOST` switch to authenticated SMTP + STARTTLS; without them the plain no-auth seam used by the tests is unchanged. New exported `appUrl()` (`APP_URL`, else `https://$VERCEL_URL`) replaces every `process.env.APP_URL` use in `lib/email.ts` and the admin-invite route.
+
+**Evidence (real preview deploy, 2026-11-05):** a signup through the preview created the user only on the `preview` branch (`signup_success`, `email_sent: verification`); production had 0 such rows and still 31 users. The verification email arrived in the Ethereal inbox and its link and logo pointed at the preview's own URL. The preview URL redirects to Vercel SSO (deployment protection on).
+
+**Tests:** 4 new unit tests (SMTP auth transport, `appUrl()` precedence and fallback); 96 unit tests, `tsc` and lint pass. Playwright not run locally (no change to app behaviour with the test env); CI runs it on the PR. **Deploy:** none for Production (it has no `SMTP_HOST` and keeps `APP_URL`). **Known limits:** Ethereal is a free service with no guarantees (swap the four `SMTP_*` values for Mailtrap if needed); the preview DB does not follow schema migrations automatically; `BLOB_PREVIEW_*` variables auto-created by Vercel for the new store should be unticked from Production in the dashboard.
+
+---
+
+## 2026-11-05 — CI: tests run automatically on every pull request (PR #17, merged)
 **Why:** there was no `.github/workflows/`, so unit and Playwright tests only ran when someone ran them by hand and a PR could be merged untested (workflow gap #2).
 
 **What changed:** `.github/workflows/ci.yml`, triggered by `pull_request` to `main`.

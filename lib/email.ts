@@ -2,14 +2,25 @@ import nodemailer from 'nodemailer';
 import type { SendMailOptions } from 'nodemailer';
 import { log } from '@/lib/logger';
 
-// SMTP_HOST/SMTP_PORT (test harness only, e.g. Mailpit) replace Gmail; no auth or TLS.
+// SMTP_HOST/SMTP_PORT replace Gmail (test harness: Mailpit, no auth or TLS). Adding
+// SMTP_USER/SMTP_PASS switches to authenticated SMTP with STARTTLS, used by Vercel previews
+// so they send to a mail-catching service (e.g. Mailtrap) instead of real inboxes.
 const transporter = process.env.SMTP_HOST
-  ? nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT ?? 1025),
-      secure: false,
-      ignoreTLS: true,
-    })
+  ? nodemailer.createTransport(
+      process.env.SMTP_USER
+        ? {
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT ?? 587),
+            secure: false,
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+          }
+        : {
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT ?? 1025),
+            secure: false,
+            ignoreTLS: true,
+          },
+    )
   : nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
@@ -19,6 +30,13 @@ const transporter = process.env.SMTP_HOST
         pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
+
+// Base URL for links in emails. APP_URL wins; a Vercel preview deployment has no fixed
+// APP_URL (its URL changes per deploy), so it falls back to the deployment's own VERCEL_URL.
+export function appUrl(): string {
+  if (process.env.APP_URL) return process.env.APP_URL;
+  return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+}
 
 // Single choke point for outgoing mail: sends, then records the outcome (metadata
 // only — never the body, which can carry live token links) so admins can see in the
@@ -48,7 +66,7 @@ function wrap(body: string) {
 <body style="margin:0;padding:0;background:#F5F5F7;font-family:'SF Pro Text',-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;">
 <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 4px 0 rgba(0,0,0,0.08), 0 8px 24px 0 rgba(0,0,0,0.08);">
   <div style="background:#ffffff;padding:24px 32px;border-bottom:1px solid rgba(0,0,0,0.08);">
-    <img src="${process.env.APP_URL}/unimatelogo.png" alt="UniMate" width="130" style="display:block;width:130px;height:auto;border:0;" />
+    <img src="${appUrl()}/unimatelogo.png" alt="UniMate" width="130" style="display:block;width:130px;height:auto;border:0;" />
   </div>
   <div style="padding:32px;">${body}</div>
   <div style="padding:18px 32px;border-top:1px solid rgba(0,0,0,0.12);text-align:center;color:#8E8E93;font-size:12px;">
@@ -59,7 +77,7 @@ function wrap(body: string) {
 }
 
 export async function sendVerificationEmail(to: string, token: string) {
-  const url = `${process.env.APP_URL}/api/auth/verify-email?token=${token}`;
+  const url = `${appUrl()}/api/auth/verify-email?token=${token}`;
   await deliver('verification', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
@@ -101,7 +119,7 @@ export async function sendRegistrationAcknowledgement(to: string, name: string) 
 }
 
 export async function sendAdminRegistrationNotification(adminEmail: string, studentName: string, studentEmail: string) {
-  const adminPortalUrl = `${process.env.APP_URL}/admin`;
+  const adminPortalUrl = `${appUrl()}/admin`;
   await deliver('admin_registration_notice', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to: adminEmail,
@@ -126,7 +144,7 @@ export async function sendAdminRegistrationNotification(adminEmail: string, stud
 }
 
 export async function sendApprovalEmail(to: string, name: string) {
-  const url = `${process.env.APP_URL}/login`;
+  const url = `${appUrl()}/login`;
   await deliver('approval', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
@@ -164,7 +182,7 @@ export async function sendAdminInviteEmail(to: string, inviteUrl: string) {
 
 export async function sendPeerInviteEmail(to: string, inviterName: string, universityName: string | null) {
   const safeName = escapeHtml(inviterName);
-  const url = `${process.env.APP_URL}/login?mode=signup`;
+  const url = `${appUrl()}/login?mode=signup`;
   const subject = universityName
     ? `${inviterName} from ${universityName} invited you to UniMate 👋`
     : `${inviterName} invited you to UniMate 👋`;
@@ -213,7 +231,7 @@ export async function sendPeerInviteEmail(to: string, inviterName: string, unive
 }
 
 export async function sendPasswordResetEmail(to: string, token: string) {
-  const url = `${process.env.APP_URL}/reset-password?token=${token}`;
+  const url = `${appUrl()}/reset-password?token=${token}`;
   await deliver('password_reset', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
@@ -232,7 +250,7 @@ export async function sendPasswordResetEmail(to: string, token: string) {
 }
 
 export async function sendNewPeerNotificationEmail(to: string, newStudentName: string, universityName: string) {
-  const url = `${process.env.APP_URL}/`;
+  const url = `${appUrl()}/`;
   await deliver('new_peer_notice', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
@@ -269,7 +287,7 @@ export async function sendRevokeEmail(to: string, name: string, reason: string) 
 }
 
 export async function sendUnrevokeEmail(to: string, name: string) {
-  const url = `${process.env.APP_URL}/`;
+  const url = `${appUrl()}/`;
   await deliver('unrevoke', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,
@@ -288,7 +306,7 @@ export async function sendUnrevokeEmail(to: string, name: string) {
 }
 
 export async function sendRejectionEmail(to: string, name: string, reason: string) {
-  const url = `${process.env.APP_URL}/login`;
+  const url = `${appUrl()}/login`;
   await deliver('rejection', {
     from: `"UniMate" <${process.env.GMAIL_USER}>`,
     to,

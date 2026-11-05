@@ -23,6 +23,29 @@ describe('transport selection', () => {
     expect(opts).toMatchObject({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
     expect(opts.auth).toBeUndefined();
   });
+  it('uses authenticated SMTP with STARTTLS when SMTP_USER is also set (preview mail catcher)', async () => {
+    vi.stubEnv('SMTP_HOST', 'sandbox.smtp.example.test'); vi.stubEnv('SMTP_PORT', '2525');
+    vi.stubEnv('SMTP_USER', 'u123'); vi.stubEnv('SMTP_PASS', 'p456');
+    await load();
+    const opts = createTransport.mock.calls[0][0] as Record<string, unknown>;
+    expect(opts).toMatchObject({ host: 'sandbox.smtp.example.test', port: 2525, secure: false, auth: { user: 'u123', pass: 'p456' } });
+    expect(opts.ignoreTLS).toBeUndefined();
+  });
+});
+
+describe('appUrl()', () => {
+  it('prefers APP_URL', async () => {
+    vi.stubEnv('APP_URL', 'https://unimate.example'); vi.stubEnv('VERCEL_URL', 'x-abc.vercel.app');
+    expect((await load()).appUrl()).toBe('https://unimate.example');
+  });
+  it('falls back to https://VERCEL_URL on a deployment without APP_URL (previews)', async () => {
+    vi.stubEnv('APP_URL', ''); vi.stubEnv('VERCEL_URL', 'x-abc.vercel.app');
+    expect((await load()).appUrl()).toBe('https://x-abc.vercel.app');
+  });
+  it('returns an empty string when neither is set', async () => {
+    vi.stubEnv('APP_URL', ''); vi.stubEnv('VERCEL_URL', '');
+    expect((await load()).appUrl()).toBe('');
+  });
 });
 
 describe('deliver() logging (via sendVerificationEmail)', () => {
