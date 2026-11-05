@@ -18,7 +18,7 @@ Living document. Update the status checkboxes and the change log as work progres
 
 ## Automatic runs on pull requests (GitHub Actions)
 
-`.github/workflows/ci.yml` runs on every PR to `main`: `tsc`, lint and unit tests always; the Playwright suites only when app code changed (see the path list in the workflow). Playwright runs against a throwaway **schema-only** Neon branch created and deleted by the job, with Mailpit as a service container, so CI never holds real student data. Needs the GitHub secret `NEON_API_KEY` and variable `NEON_PROJECT_ID`. Playwright's HTML report is uploaded as an artifact when a run fails. Fork PRs get no secrets and skip the Playwright job.
+`.github/workflows/ci.yml` runs on every PR to `main`: `tsc`, lint and unit tests always; the Playwright suites only when app code changed (see the path list in the workflow). Playwright runs against a throwaway Neon branch off `production` created and deleted by the job (3-hour expiry as a backstop), with Mailpit as a service container. The branch is a full copy, so it holds real student rows until deleted; the harness truncates before seeding. Schema-only is blocked while production has the Neon Data API roles enabled. Needs the GitHub secret `NEON_API_KEY` and variable `NEON_PROJECT_ID`. Playwright's HTML report is uploaded as an artifact when a run fails. Fork PRs get no secrets and skip the Playwright job.
 
 ## Manual testing against a throwaway Neon branch (never `.env.local`)
 

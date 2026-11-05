@@ -2,8 +2,8 @@ name: CI
 
 # Runs on every pull request to main.
 #  - "Checks" (tsc, lint, unit tests) always runs.
-#  - "Playwright" runs only when app code changed, against a throwaway SCHEMA-ONLY Neon
-#    branch (no student data) that is deleted when the job ends.
+#  - "Playwright" runs only when app code changed, against a throwaway Neon branch that is
+#    deleted when the job ends.
 # Uses `pull_request` (never `pull_request_target`): PRs from forks get no secrets, so the
 # Playwright job is skipped for them.
 
@@ -78,53 +78,24 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # Throwaway SCHEMA-ONLY branch off the default (production) branch: tables exist, rows
-      # do not, so no student data is ever copied. expires_at is a safety net in case the
-      # delete step below never runs (e.g. the runner dies).
+      # Throwaway branch off the default (production) branch. It is a full copy, so it holds
+      # real student rows until the delete step runs; the harness TRUNCATEs every table before
+      # seeding, and the runner never reads them. A schema-only branch would avoid the copy but
+      # Neon refuses it while production has the Data API roles (anonymous/authenticator/
+      # authenticated). expires_at is a safety net in case the delete step never runs.
       - name: Compute branch name and expiry
         id: names
         run: |
           echo "branch=ci/pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
           echo "expires=$(date -u -d '+3 hours' +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-      # TEMPORARY DIAGNOSTIC (remove before merge): reproduce the 412 and print Neon's reason.
-      # Response bodies are printed only on failure (a success body holds a password); any
-      # branch a variant creates is deleted immediately.
-      - name: Diagnose Neon branch creation (TEMPORARY)
-        continue-on-error: true
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          PROJECT: ${{ vars.NEON_PROJECT_ID }}
-          EXPIRES: ${{ steps.names.outputs.expires }}
-          NAME: ${{ steps.names.outputs.branch }}
-        run: |
-          API="https://console.neon.tech/api/v2/projects/$PROJECT"
-          AUTH="Authorization: Bearer $NEON_API_KEY"
-          curl -sS -H "$AUTH" "$API/branches" -o /tmp/branches.json
-          PARENT=$(jq -r '.branches[] | select(.default==true) | .id' /tmp/branches.json)
-          echo "default branch: $PARENT; branch count: $(jq '.branches | length' /tmp/branches.json)"
-          try() {
-            echo "== $1"
-            code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' -X POST "$API/branches" -H "$AUTH" -H 'Content-Type: application/json' -d "$2")
-            echo "HTTP $code"
-            case "$code" in
-              2*) echo "created OK"; id=$(jq -r '.branch.id // empty' /tmp/resp.json)
-                  [ -n "$id" ] && curl -sS -o /dev/null -w 'delete HTTP %{http_code}\n' -X DELETE -H "$AUTH" "$API/branches/$id" ;;
-              *)  head -c 1500 /tmp/resp.json; echo ;;
-            esac
-          }
-          try "A: schema-only, nothing else" "{\"branch\":{\"parent_id\":\"$PARENT\",\"name\":\"$NAME-a\",\"init_source\":\"schema-only\"}}"
-          try "B: schema-only + expires_at" "{\"branch\":{\"parent_id\":\"$PARENT\",\"name\":\"$NAME-b\",\"init_source\":\"schema-only\",\"expires_at\":\"$EXPIRES\"}}"
-          try "C: schema-only + endpoint" "{\"branch\":{\"parent_id\":\"$PARENT\",\"name\":\"$NAME-c\",\"init_source\":\"schema-only\"},\"endpoints\":[{\"type\":\"read_write\"}]}"
-
-      - name: Create Neon test branch (schema-only)
+      - name: Create Neon test branch
         id: neon
         uses: neondatabase/create-branch-action@72ed4f69a12b6be9c16aebfad893f6a21e9aba8b # v6.4.0
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           api_key: ${{ secrets.NEON_API_KEY }}
           branch_name: ${{ steps.names.outputs.branch }}
-          branch_type: schema-only
           expires_at: ${{ steps.names.outputs.expires }}
 
       - name: Write .env.test
