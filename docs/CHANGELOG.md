@@ -6,7 +6,34 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
-## 2026-11-05 — Tooling: `npm run lint` ignores vendored agent skills (branch `docs-workflow`, not yet merged)
+## 2026-11-05 — Vercel previews no longer use production data, secrets or email (PR #18, merged)
+**Why:** `vercel env ls` showed `DATABASE_CONNECTION_STRING`, `JWT_SECRET`, `GMAIL_*`, `ADMIN_EMAIL`, `CRON_SECRET` and the Blob store set for both Production and Preview. Every pushed branch built a preview that read and wrote live student data, sent real email, accepted production-signed tokens, treated the production admin email as admin and accepted the production cron secret (workflow gap #3). `APP_URL` was Production-only, so preview email links had no base URL.
+
+**What changed**
+- **Vercel (infrastructure, not in git):** the 8 shared variables are Production-only. Preview has its own: a Neon `preview` branch, new `JWT_SECRET` and `CRON_SECRET`, `ADMIN_EMAIL=preview-admin@unimate.test`, a fake `GMAIL_USER` (no app password), `SMTP_*` for an Ethereal mail catcher, and a separate Blob store (`BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY`).
+- **Neon `preview` branch** (`br-tiny-star-apci7pli`): created off production, then immediately truncated (users, profiles, flights, logs, invites, rate limits) and given one fake admin. Reference tables (universities, cities, airports, airlines) kept: public data. Migrations must be applied to it by hand when the schema changes.
+- `lib/email.ts`: `SMTP_USER`/`SMTP_PASS` with `SMTP_HOST` switch to authenticated SMTP + STARTTLS; without them the plain no-auth seam used by the tests is unchanged. New exported `appUrl()` (`APP_URL`, else `https://$VERCEL_URL`) replaces every `process.env.APP_URL` use in `lib/email.ts` and the admin-invite route.
+
+**Evidence (real preview deploy, 2026-11-05):** a signup through the preview created the user only on the `preview` branch (`signup_success`, `email_sent: verification`); production had 0 such rows and still 31 users. The verification email arrived in the Ethereal inbox and its link and logo pointed at the preview's own URL. The preview URL redirects to Vercel SSO (deployment protection on).
+
+**Tests:** 4 new unit tests (SMTP auth transport, `appUrl()` precedence and fallback); 96 unit tests, `tsc` and lint pass. Playwright not run locally (no change to app behaviour with the test env); CI runs it on the PR. **Deploy:** none for Production (it has no `SMTP_HOST` and keeps `APP_URL`). **Known limits:** Ethereal is a free service with no guarantees (swap the four `SMTP_*` values for Mailtrap if needed); the preview DB does not follow schema migrations automatically; `BLOB_PREVIEW_*` variables auto-created by Vercel for the new store should be unticked from Production in the dashboard.
+
+---
+
+## 2026-11-05 — CI: tests run automatically on every pull request (PR #17, merged)
+**Why:** there was no `.github/workflows/`, so unit and Playwright tests only ran when someone ran them by hand and a PR could be merged untested (workflow gap #2).
+
+**What changed:** `.github/workflows/ci.yml`, triggered by `pull_request` to `main`.
+- `Checks (tsc, lint, unit)` always runs.
+- `Playwright (api, e2e, security)` runs only when the PR touches app code (`app/ lib/ db/ tests/ public/`, `middleware.ts`, `next.config.ts`, `package*.json`, `tsconfig.json`, the Playwright/Vitest/ESLint configs, `vercel.json`, or the workflow itself). Docs-only PRs skip it; a skipped job counts as passed. It is also skipped for fork PRs (no secrets).
+- The Playwright job creates a throwaway Neon branch off production (a full copy, so it holds real student rows until it is deleted; the harness TRUNCATEs every table before seeding and the runner never reads them), writes `.env.test` from its pooled connection string, runs Mailpit as a service container, runs `npx playwright test`, and deletes the branch afterwards (`if: always()`, plus a 3-hour `expires_at` as a safety net). The harness guards (`TEST_MODE`, production host marker, host allow-list) are unchanged.
+- Neon actions are pinned to commit SHAs. `pull_request` only, never `pull_request_target`.
+
+**Tests:** the workflow can only be proven by a real PR run; YAML and the path filter were checked locally. **Deploy:** needs GitHub secret `NEON_API_KEY` and variable `NEON_PROJECT_ID` (both added). **Known limits:** a PR that adds a migration after 021 is not applied to the CI branch (it is cut from production's schema). A schema-only branch (no student data) was tried first and Neon refused it: `project with a legacy web access role do not support schema-only branches; role:"anonymous"`. Production has the Neon Data API enabled (roles `anonymous`, `authenticator`, `authenticated`, created 2026-10-21) which the app does not use; disabling it would allow schema-only branches (production change, tracked separately).
+
+---
+
+## 2026-11-05 — Tooling: `npm run lint` ignores vendored agent skills (PR #19, not yet merged)
 **Why:** `npm run lint` reported 24 problems (23 errors), all in the untracked `.agents/skills/security-audit/*.cjs` (a third-party skill installed from `cloudflare/security-audit-skill`). App code was clean, but the noise made "lint clean" unreadable.
 
 **What changed:** `eslint.config.mjs` ignores `.agents/**`; `.gitignore` lists `/.agents/` and `/skills-lock.json` so the vendored skill is not committed.
@@ -15,7 +42,7 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
-## 2026-11-05 — Dashboard: remove fake service cards, move "Invite a peer", fix + rewrite the invite email (branch `remove-services-move-invite`, not yet merged)
+## 2026-11-05 — Dashboard: remove fake service cards, move "Invite a peer", fix + rewrite the invite email (PR #15, merged)
 **Why:** the Accommodation / Forex / Flight cards only fired a toast (no route, no storage). The invite lived in that sidebar, which is hidden below 860 px, so phones could not reach it. Production had one `peer_invites` row ever (2026-06-16) and no `peer_invite` email logs, so recent attempts were being rejected before sending; the error toast (z-index 90) rendered behind the modal backdrop (100/101), so nothing visible happened. Also, the route inserted `peer_invites` before sending, so a failed send still burned the daily cap and the 7-day block.
 
 **What changed**
@@ -25,9 +52,9 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 - `app/page.tsx` stats row: cards were a fixed 5-column grid, so with 4 cards (no flight details yet) a gap was left on the right. Now `auto-fit` columns so the cards span the full boarding-pass width; restyled as white cards with a coloured accent bar.
 - `lib/email.ts` `sendPeerInviteEmail`: friendlier, region-neutral copy (no mention of India: UniMate is for students worldwide), no mention of removed services, 3-step how-to-start incl. final admission document, CTA + plain link to `/login?mode=signup`. `app/login/page.tsx` honours `?mode=signup`.
 
-**Tests:** targeted only so far (unit email, e2e invite + dashboard + mobile, API invite incl. mail-outage rollback). Full suite pending. **Deploy:** none (no schema/env change). Real Gmail delivery/spam placement not verified locally.
+**Tests:** full suite on a throwaway Neon test branch: 92 unit + 265 Playwright (1 skipped: the `ALLOW_MAIL_OUTAGE` test, run separately and passing). The `/login?mode=signup` link, inline invite errors, mobile invite button and the failed-send rollback each have a test. **Deploy:** none (no schema/env change). Real Gmail delivery/spam placement not verified locally.
 
-## 2026-11-05 — Dashboard: share-number switch + reveal-email in peer modal (branch `dashboard-share-switch-email-reveal`, not yet merged)
+## 2026-11-05 — Dashboard: share-number switch + reveal-email in peer modal (PR #14, merged)
 **Why:** the "Share my number" control was a dot + On/Off text that did not look clickable, and `toggleSharePhone` never checked `res.ok`, so a failed save left the UI "On" with a false success toast (privacy-relevant). The peer modal's Email was a bare `mailto:` link: with no mail client nothing happens and the address is never visible.
 
 **What changed**
@@ -36,7 +63,7 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 **Tests:** `tests/e2e/dashboard-admin-ui.spec.ts` updated (switch aria-checked, rollback on 500, email reveal). Not yet run: no Neon test branch exists. **Deploy:** none (no schema/env change).
 
-## 2026-11-03 — Registration: browser-side failure logging + automatic submit retry (branch `feature/registration-client-logging`, not yet merged)
+## 2026-11-03 — Registration: browser-side failure logging + automatic submit retry (PRs #11 and #12, merged)
 **Why (production evidence, 2026-11-03):** a student (annagrace2204@gmail.com) saw "We could not reach the server" on the consent page at 04:01 UTC. Neon had no `registration_failed/error` row and no profile; Vercel had no `POST /api/student/register` for her (two other students' POSTs that hour are there). So `fetch` threw in her browser and the failure left no trace anywhere. Code review found the same blind spot elsewhere: client-only validation, PDF/photo rejection on pick, 413s, and the page-load `/api/auth/me` / dropdown fetches (no `.catch`, endless spinner). Payload size was ruled out: PDFs are capped at 2 MB each and the photo is resized to ≤400 px, so the real maximum is ~4.1 MB, under Vercel's 4.5 MB limit.
 
 **What changed**
