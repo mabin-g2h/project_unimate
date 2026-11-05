@@ -16,6 +16,10 @@ Living document. Update the status checkboxes and the change log as work progres
 - Only one `next dev` can run per checkout (Next 16 lock): stop any preview server before running the suites.
 - Specs added after the 2026-10-21 QA run: `tests/e2e/register-form.spec.ts` (11 tests, see Phase 2 item 12). The shared helper `tests/helpers/ui.ts` `fillRegistration` ticks the "I confirm this is my final … not an offer letter" checkbox; any new journey that fills the registration form must go through it.
 
+## Automatic runs on pull requests (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every PR to `main`: `tsc`, lint and unit tests always; the Playwright suites only when app code changed (see the path list in the workflow). Playwright runs against a throwaway Neon branch off `production` created and deleted by the job (3-hour expiry as a backstop), with Mailpit as a service container. The branch is a full copy, so it holds real student rows until deleted; the harness truncates before seeding. Schema-only is blocked while production has the Neon Data API roles enabled. Needs the GitHub secret `NEON_API_KEY` and variable `NEON_PROJECT_ID`. Playwright's HTML report is uploaded as an artifact when a run fails. Fork PRs get no secrets and skip the Playwright job.
+
 ## Manual testing against a throwaway Neon branch (never `.env.local`)
 
 `.env.local` points at production. For hands-on testing of UI changes:

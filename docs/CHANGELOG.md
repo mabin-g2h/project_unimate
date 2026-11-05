@@ -6,6 +6,19 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-05 — CI: tests run automatically on every pull request (PR #17, not yet merged)
+**Why:** there was no `.github/workflows/`, so unit and Playwright tests only ran when someone ran them by hand and a PR could be merged untested (workflow gap #2).
+
+**What changed:** `.github/workflows/ci.yml`, triggered by `pull_request` to `main`.
+- `Checks (tsc, lint, unit)` always runs.
+- `Playwright (api, e2e, security)` runs only when the PR touches app code (`app/ lib/ db/ tests/ public/`, `middleware.ts`, `next.config.ts`, `package*.json`, `tsconfig.json`, the Playwright/Vitest/ESLint configs, `vercel.json`, or the workflow itself). Docs-only PRs skip it; a skipped job counts as passed. It is also skipped for fork PRs (no secrets).
+- The Playwright job creates a throwaway Neon branch off production (a full copy, so it holds real student rows until it is deleted; the harness TRUNCATEs every table before seeding and the runner never reads them), writes `.env.test` from its pooled connection string, runs Mailpit as a service container, runs `npx playwright test`, and deletes the branch afterwards (`if: always()`, plus a 3-hour `expires_at` as a safety net). The harness guards (`TEST_MODE`, production host marker, host allow-list) are unchanged.
+- Neon actions are pinned to commit SHAs. `pull_request` only, never `pull_request_target`.
+
+**Tests:** the workflow can only be proven by a real PR run; YAML and the path filter were checked locally. **Deploy:** needs GitHub secret `NEON_API_KEY` and variable `NEON_PROJECT_ID` (both added). **Known limits:** a PR that adds a migration after 021 is not applied to the CI branch (it is cut from production's schema). A schema-only branch (no student data) was tried first and Neon refused it: `project with a legacy web access role do not support schema-only branches; role:"anonymous"`. Production has the Neon Data API enabled (roles `anonymous`, `authenticator`, `authenticated`, created 2026-10-21) which the app does not use; disabling it would allow schema-only branches (production change, tracked separately).
+
+---
+
 ## 2026-11-05 — Dashboard: remove fake service cards, move "Invite a peer", fix + rewrite the invite email (PR #15, merged)
 **Why:** the Accommodation / Forex / Flight cards only fired a toast (no route, no storage). The invite lived in that sidebar, which is hidden below 860 px, so phones could not reach it. Production had one `peer_invites` row ever (2026-06-16) and no `peer_invite` email logs, so recent attempts were being rejected before sending; the error toast (z-index 90) rendered behind the modal backdrop (100/101), so nothing visible happened. Also, the route inserted `peer_invites` before sending, so a failed send still burned the daily cap and the 7-day block.
 
