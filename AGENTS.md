@@ -12,6 +12,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Architecture, schema, hard rules and conventions live in `CLAUDE.md`. This file is only *how to work* here.
 
+### Workflow
+- Every change (feature, bug fix, copy, schema, config) follows `docs/workflow.md`: plan → feature branch → throwaway Neon test env → build → targeted tests → user confirms → full suite → docs + commit → push/PR/merge → clean up. Read it before starting. Claude Code users also have the `change-workflow` skill (`.claude/skills/`, gitignored, so local only) that points at the same file.
+- Stop and ask before: creating a Neon test branch, the full test run, commit/push/PR/merge, deleting branches, sending real email, any write to production.
+
 ### Code
 - Extend existing `lib/*` modules instead of adding new helpers. Stay inside Phase 1 scope.
 - Next 16: request APIs are async (`await cookies()`, `await params`). `middleware.ts` is deprecated for `proxy.ts`; never have both, and migrate only when asked.

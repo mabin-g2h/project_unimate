@@ -24,6 +24,7 @@ Run `npx tsc --noEmit && npm run lint` before marking any task complete.
 | `AGENTS.md` | How to work in the repo: conventions, serverless rules, testing, git, "Done means" |
 | `docs/CHANGELOG.md` | What changed, **why**, and the production evidence behind it — read before altering existing behaviour; add an entry with every behaviour-changing PR |
 | `docs/backlog.md` | Ideas not built yet, with evidence (registration funnel, documents, email) — check here before designing a new feature |
+| `docs/workflow.md` | Step-by-step change workflow (branch, throwaway test env, test, PR, merge, clean up); gaps are tracked in `docs/workflow-todo.md` |
 | `docs/testing-plan.md` | Test harness, safety guards, suites, manual-testing recipe, test-branch status |
 | `docs/qa/` | Dated QA reports; open findings are `test.fail` / `it.fails` markers in `tests/` |
 | `docs/technical-overview.md` | Longer human-oriented architecture write-up; can lag behind this file |

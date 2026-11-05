@@ -6,7 +6,7 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
-## 2026-11-05 — Vercel previews no longer use production data, secrets or email (PR #18, not yet merged)
+## 2026-11-05 — Vercel previews no longer use production data, secrets or email (PR #18, merged)
 **Why:** `vercel env ls` showed `DATABASE_CONNECTION_STRING`, `JWT_SECRET`, `GMAIL_*`, `ADMIN_EMAIL`, `CRON_SECRET` and the Blob store set for both Production and Preview. Every pushed branch built a preview that read and wrote live student data, sent real email, accepted production-signed tokens, treated the production admin email as admin and accepted the production cron secret (workflow gap #3). `APP_URL` was Production-only, so preview email links had no base URL.
 
 **What changed**
@@ -30,6 +30,15 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 - Neon actions are pinned to commit SHAs. `pull_request` only, never `pull_request_target`.
 
 **Tests:** the workflow can only be proven by a real PR run; YAML and the path filter were checked locally. **Deploy:** needs GitHub secret `NEON_API_KEY` and variable `NEON_PROJECT_ID` (both added). **Known limits:** a PR that adds a migration after 021 is not applied to the CI branch (it is cut from production's schema). A schema-only branch (no student data) was tried first and Neon refused it: `project with a legacy web access role do not support schema-only branches; role:"anonymous"`. Production has the Neon Data API enabled (roles `anonymous`, `authenticator`, `authenticated`, created 2026-10-21) which the app does not use; disabling it would allow schema-only branches (production change, tracked separately).
+
+---
+
+## 2026-11-05 — Tooling: `npm run lint` ignores vendored agent skills (PR #19, not yet merged)
+**Why:** `npm run lint` reported 24 problems (23 errors), all in the untracked `.agents/skills/security-audit/*.cjs` (a third-party skill installed from `cloudflare/security-audit-skill`). App code was clean, but the noise made "lint clean" unreadable.
+
+**What changed:** `eslint.config.mjs` ignores `.agents/**`; `.gitignore` lists `/.agents/` and `/skills-lock.json` so the vendored skill is not committed.
+
+**Tests:** `npm run lint` and `npx tsc --noEmit` both exit 0. No app code touched. **Deploy:** none.
 
 ---
 
