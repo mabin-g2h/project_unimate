@@ -220,16 +220,20 @@ test.describe('email failure is logged exactly once', () => {
     test.skip(!process.env.ALLOW_MAIL_OUTAGE, 'stops the Mailpit container; run with ALLOW_MAIL_OUTAGE=1');
     const { execSync } = await import('node:child_process');
     const u = await seedUser();
+    let failTo = '';
     execSync('docker stop unimate-mailpit');
     try {
       const s = await loginAs(u.email);
-      await s.post('/api/students/invite-peer', { data: { email: emailFor('fail') } });
+      failTo = emailFor('fail');
+      expect((await s.post('/api/students/invite-peer', { data: { email: failTo } })).status()).toBe(502);
       await new Promise(r => setTimeout(r, 1500));
     } finally {
       execSync('docker start unimate-mailpit');
     }
     const rows = await testSql()`SELECT 1 FROM student_error_logs WHERE event = 'email_send_failed' AND metadata->>'type' IS NOT NULL AND created_at > NOW() - INTERVAL '1 minute'`;
     expect(rows.length).toBeGreaterThanOrEqual(1);
+    // a failed send must not burn the daily cap or block a retry
+    expect(await testSql()`SELECT 1 FROM peer_invites WHERE email = ${failTo}`).toHaveLength(0);
     void uniq; void mailFor;
   });
 });

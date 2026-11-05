@@ -14,57 +14,6 @@ const selectStyle: React.CSSProperties = {
   backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center",
 };
 
-const services = [
-  {
-    key: "Accommodation",
-    tag: "Team assisted",
-    msg: "Our housing team will email you verified options near your university.",
-    title: "Find Accommodation",
-    desc: "Student housing & shared flats near campus.",
-    cta: "Request now",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9.5 12 3l9 6.5V21H3z" /><path d="M9 21v-7h6v7" />
-      </svg>
-    ),
-    bg: "var(--teal-tint)", color: "var(--teal-deep)"
-  },
-  {
-    key: "Forex Card",
-    tag: "Best rate",
-    msg: "We'll send your Forex card application link with the best student rates.",
-    title: "Apply for Forex Card",
-    desc: "Load AUD before you land. Zero markup.",
-    cta: "Request now",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="5" width="20" height="14" rx="2.5" /><path d="M2 10h20" /><path d="M6 15h4" />
-      </svg>
-    ),
-    bg: "var(--coral-tint)", color: "var(--coral-deep)"
-  },
-  {
-    key: "Flight Booking",
-    tag: "Team assisted",
-    msg: "Our travel desk will share flight options around your travel date.",
-    title: "Book Air Tickets",
-    desc: "Compare & book student-friendly fares.",
-    cta: "Request now",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L11 19v-5.5z" />
-      </svg>
-    ),
-    bg: "var(--teal-tint)", color: "var(--teal)"
-  },
-];
-
-const ArrowRight = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12h14M13 6l6 6-6 6" />
-  </svg>
-);
-
 interface Props {
   peers: Peer[];
   myTravelDate: string | null;
@@ -267,18 +216,25 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
         </div>
       )}
 
-      {/* 2-col grid: main + services sidebar */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 20 }} className="explorer-grid">
+      {/* heading, filters, peer list */}
+      <div>
 
-        {/* MAIN: heading, filters, peer list */}
         <div>
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.45rem", letterSpacing: "-.02em" }}>
-              Your FlyMates
+          <div style={{ marginBottom: 14, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ minWidth: 0, flex: "1 1 260px" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.45rem", letterSpacing: "-.02em" }}>
+                Your FlyMates
+              </div>
+              <div style={{ color: "var(--ink-soft)", fontSize: ".9rem" }}>
+                Verified students heading to {myCountry || "your destination country"}. Filter by university, city, course, intake and more.
+              </div>
             </div>
-            <div style={{ color: "var(--ink-soft)", fontSize: ".9rem" }}>
-              Verified students heading to {myCountry || "your destination country"}. Filter by university, city, course, intake and more.
-            </div>
+            <button type="button" onClick={() => setInviteOpen(true)} className="invite-pill">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
+              </svg>
+              Invite a peer
+            </button>
           </div>
 
           {/* Horizontal filter row — hidden on mobile, replaced by drawer button */}
@@ -343,7 +299,10 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
               <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.2rem", color: "var(--ink)" }}>No peers yet</h3>
-              <p>You&apos;re among the first verified students heading to {myCountry || "your destination country"}. Check back soon!</p>
+              <p>You&apos;re among the first verified students heading to {myCountry || "your destination country"}. Bring a friend along!</p>
+              <button type="button" onClick={() => setInviteOpen(true)} className="invite-pill invite-pill-solid" style={{ marginTop: 14 }}>
+                Invite a friend heading to {myCountry || "your destination country"}
+              </button>
             </div>
           ) : list.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--ink-soft)" }}>
@@ -361,69 +320,6 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
             </div>
           )}
         </div>
-
-        {/* RIGHT: service cards — icon + title + tag + CTA only */}
-        <aside className="service-sidebar" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button
-              onClick={() => setInviteOpen(true)}
-              style={{
-                background: "var(--paper)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)",
-                padding: "14px", boxShadow: "var(--shadow)", cursor: "pointer", textAlign: "left",
-                transition: "transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, border-color .25s",
-              }}
-              className="svc-card"
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center",
-                  flexShrink: 0, background: "var(--coral-tint)", color: "var(--coral-deep)",
-                }}>
-                  <div style={{ width: 18, height: 18 }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
-                    </svg>
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: ".88rem", letterSpacing: "-.01em", lineHeight: 1.2 }}>Invite a peer</div>
-                  <div style={{ fontSize: ".62rem", color: "var(--ink-faint)", marginTop: 2, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase" }}>Grow the network</div>
-                </div>
-              </div>
-              <span style={{ fontWeight: 700, fontSize: ".74rem", color: "var(--teal)", display: "flex", alignItems: "center", gap: 5 }}>
-                Send invite <ArrowRight />
-              </span>
-            </button>
-            {services.map(s => (
-              <button
-                key={s.key}
-                onClick={() => onToast(s.key + " requested", s.msg)}
-                style={{
-                  background: "var(--paper)", border: "1px solid var(--line-soft)", borderRadius: "var(--radius-sm)",
-                  padding: "14px", boxShadow: "var(--shadow)", cursor: "pointer", textAlign: "left",
-                  transition: "transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, border-color .25s",
-                }}
-                className="svc-card"
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center",
-                    flexShrink: 0, background: s.bg, color: s.color,
-                  }}>
-                    <div style={{ width: 18, height: 18 }}>{s.icon}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: ".88rem", letterSpacing: "-.01em", lineHeight: 1.2 }}>{s.title}</div>
-                    <div style={{ fontSize: ".62rem", color: "var(--ink-faint)", marginTop: 2, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase" }}>{s.tag}</div>
-                  </div>
-                </div>
-                <span style={{ fontWeight: 700, fontSize: ".74rem", color: "var(--teal)", display: "flex", alignItems: "center", gap: 5 }}>
-                  {s.cta} <ArrowRight />
-                </span>
-              </button>
-            ))}
-          </div>
-        </aside>
 
       </div>
 

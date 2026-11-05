@@ -54,6 +54,14 @@ describe('HTML escaping', () => {
     sendMail.mockClear(); await m.sendUnrevokeEmail('a@b.test', xss); expect(sentHtml()).not.toContain(xss);
     sendMail.mockClear(); await m.sendPeerInviteEmail('a@b.test', xss, xss); expect(sentHtml()).not.toContain(xss);
   });
+  it('peer invite links to the sign-up tab and does not promise removed services', async () => {
+    sendMail.mockResolvedValue({});
+    await (await load()).sendPeerInviteEmail('a@b.test', 'Anna', 'McGill University');
+    const mail = sendMail.mock.calls[0][0] as { html: string; subject: string };
+    expect(mail.html).toContain('/login?mode=signup');
+    expect(mail.html).not.toMatch(/forex|accommodation|flight bookings/i);
+    expect(mail.subject).toContain('Anna');
+  });
   // FINDING F-21: these templates interpolate the first name / university without escapeHtml.
   it.fails.each([
     ['sendRegistrationAcknowledgement', (m: Awaited<ReturnType<typeof load>>) => m.sendRegistrationAcknowledgement('a@b.test', xss)],

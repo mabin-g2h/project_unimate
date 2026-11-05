@@ -17,7 +17,7 @@ export default function Toast({ toasts }: ToastProps) {
   return (
     <div style={{
       position: "fixed", left: "50%", bottom: 28, transform: "translateX(-50%)",
-      zIndex: 90, display: "flex", flexDirection: "column", gap: 10, alignItems: "center",
+      zIndex: 400, display: "flex", flexDirection: "column", gap: 10, alignItems: "center",
       width: "calc(100% - 40px)", maxWidth: 440
     }}>
       {toasts.map(t => (
