@@ -6,6 +6,15 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-05 — Dashboard: share-number switch + reveal-email in peer modal (branch `dashboard-share-switch-email-reveal`, not yet merged)
+**Why:** the "Share my number" control was a dot + On/Off text that did not look clickable, and `toggleSharePhone` never checked `res.ok`, so a failed save left the UI "On" with a false success toast (privacy-relevant). The peer modal's Email was a bare `mailto:` link: with no mail client nothing happens and the address is never visible.
+
+**What changed**
+- `BoardingPass.tsx` / `globals.css` (`.sw-*`): real `role="switch"` toggle (brand blue when on) with helper text "Peers can see / Only you can see your number"; disabled while saving. `app/page.tsx`: checks `res.ok`, rolls back and shows an error toast on failure.
+- `StudentCard.tsx`: Email button now reveals the address inline (`data-testid="peer-email-panel"`) with a Copy button (clipboard API + `execCommand` fallback); no navigation. The `tel:` phone pill is unchanged.
+
+**Tests:** `tests/e2e/dashboard-admin-ui.spec.ts` updated (switch aria-checked, rollback on 500, email reveal). Not yet run: no Neon test branch exists. **Deploy:** none (no schema/env change).
+
 ## 2026-11-03 — Registration: browser-side failure logging + automatic submit retry (branch `feature/registration-client-logging`, not yet merged)
 **Why (production evidence, 2026-11-03):** a student (annagrace2204@gmail.com) saw "We could not reach the server" on the consent page at 04:01 UTC. Neon had no `registration_failed/error` row and no profile; Vercel had no `POST /api/student/register` for her (two other students' POSTs that hour are there). So `fetch` threw in her browser and the failure left no trace anywhere. Code review found the same blind spot elsewhere: client-only validation, PDF/photo rejection on pick, 413s, and the page-load `/api/auth/me` / dropdown fetches (no `.catch`, endless spinner). Payload size was ruled out: PDFs are capped at 2 MB each and the photo is resized to ≤400 px, so the real maximum is ~4.1 MB, under Vercel's 4.5 MB limit.
 

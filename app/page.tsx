@@ -69,15 +69,19 @@ export default function Home() {
     setSharePhone(next);
     setTogglingPhone(true);
     try {
-      await fetch("/api/students/share-phone", {
+      const res = await fetch("/api/students/share-phone", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ share_phone: next }),
       });
+      if (!res.ok) throw new Error("save failed");
       showToast(
         next ? "Phone shared" : "Phone hidden",
         next ? "Your number is now visible to peers." : "Your number is now private."
       );
+    } catch {
+      setSharePhone(!next);
+      showToast("Could not update", "Your sharing setting was not changed. Please try again.");
     } finally {
       setTogglingPhone(false);
     }
@@ -179,6 +183,7 @@ export default function Home() {
               onAddFlight={() => setShowFlightModal(true)}
               sharePhone={sharePhone}
               onTogglePhone={toggleSharePhone}
+              busy={togglingPhone}
               phone={myProfile.phone}
             />
           )}
