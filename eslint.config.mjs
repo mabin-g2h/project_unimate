@@ -19,6 +19,8 @@ const eslintConfig = defineConfig([
     "public/__test_uploads/**",
     "playwright-report/**",
     "test-results/**",
+    // Vendored third-party agent skills — not app code.
+    ".agents/**",
   ]),
 ]);
 

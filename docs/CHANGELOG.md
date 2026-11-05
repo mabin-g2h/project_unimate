@@ -6,6 +6,15 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-05 — Tooling: `npm run lint` ignores vendored agent skills (branch `docs-workflow`, not yet merged)
+**Why:** `npm run lint` reported 24 problems (23 errors), all in the untracked `.agents/skills/security-audit/*.cjs` (a third-party skill installed from `cloudflare/security-audit-skill`). App code was clean, but the noise made "lint clean" unreadable.
+
+**What changed:** `eslint.config.mjs` ignores `.agents/**`; `.gitignore` lists `/.agents/` and `/skills-lock.json` so the vendored skill is not committed.
+
+**Tests:** `npm run lint` and `npx tsc --noEmit` both exit 0. No app code touched. **Deploy:** none.
+
+---
+
 ## 2026-11-05 — Dashboard: remove fake service cards, move "Invite a peer", fix + rewrite the invite email (branch `remove-services-move-invite`, not yet merged)
 **Why:** the Accommodation / Forex / Flight cards only fired a toast (no route, no storage). The invite lived in that sidebar, which is hidden below 860 px, so phones could not reach it. Production had one `peer_invites` row ever (2026-06-16) and no `peer_invite` email logs, so recent attempts were being rejected before sending; the error toast (z-index 90) rendered behind the modal backdrop (100/101), so nothing visible happened. Also, the route inserted `peer_invites` before sending, so a failed send still burned the daily cap and the 7-day block.
 
