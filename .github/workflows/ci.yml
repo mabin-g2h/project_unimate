@@ -87,6 +87,36 @@ jobs:
           echo "branch=ci/pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
           echo "expires=$(date -u -d '+3 hours' +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
+      # TEMPORARY DIAGNOSTIC (remove before merge): reproduce the 412 and print Neon's reason.
+      # Response bodies are printed only on failure (a success body holds a password); any
+      # branch a variant creates is deleted immediately.
+      - name: Diagnose Neon branch creation (TEMPORARY)
+        continue-on-error: true
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          PROJECT: ${{ vars.NEON_PROJECT_ID }}
+          EXPIRES: ${{ steps.names.outputs.expires }}
+          NAME: ${{ steps.names.outputs.branch }}
+        run: |
+          API="https://console.neon.tech/api/v2/projects/$PROJECT"
+          AUTH="Authorization: Bearer $NEON_API_KEY"
+          curl -sS -H "$AUTH" "$API/branches" -o /tmp/branches.json
+          PARENT=$(jq -r '.branches[] | select(.default==true) | .id' /tmp/branches.json)
+          echo "default branch: $PARENT; branch count: $(jq '.branches | length' /tmp/branches.json)"
+          try() {
+            echo "== $1"
+            code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' -X POST "$API/branches" -H "$AUTH" -H 'Content-Type: application/json' -d "$2")
+            echo "HTTP $code"
+            case "$code" in
+              2*) echo "created OK"; id=$(jq -r '.branch.id // empty' /tmp/resp.json)
+                  [ -n "$id" ] && curl -sS -o /dev/null -w 'delete HTTP %{http_code}\n' -X DELETE -H "$AUTH" "$API/branches/$id" ;;
+              *)  head -c 1500 /tmp/resp.json; echo ;;
+            esac
+          }
+          try "A: schema-only, nothing else" "{\"branch\":{\"parent_id\":\"$PARENT\",\"name\":\"$NAME-a\",\"init_source\":\"schema-only\"}}"
+          try "B: schema-only + expires_at" "{\"branch\":{\"parent_id\":\"$PARENT\",\"name\":\"$NAME-b\",\"init_source\":\"schema-only\",\"expires_at\":\"$EXPIRES\"}}"
+          try "C: schema-only + endpoint" "{\"branch\":{\"parent_id\":\"$PARENT\",\"name\":\"$NAME-c\",\"init_source\":\"schema-only\"},\"endpoints\":[{\"type\":\"read_write\"}]}"
+
       - name: Create Neon test branch (schema-only)
         id: neon
         uses: neondatabase/create-branch-action@72ed4f69a12b6be9c16aebfad893f6a21e9aba8b # v6.4.0
