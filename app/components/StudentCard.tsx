@@ -83,8 +83,31 @@ interface Props {
   onToast: (title: string, sub: string) => void;
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, myArrival, myAirline, index: i }: Props) {
   const [open, setOpen] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const sameDate = !!(myTravelDate && s.travel_date && s.travel_date === myTravelDate);
   const sameFlight = sameDate &&
@@ -127,7 +150,7 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
     <>
       {/* ── Compact tile ── */}
       <article
-        onClick={() => setOpen(true)}
+        onClick={() => { setShowEmail(false); setCopied(false); setOpen(true); }}
         style={{
           background: "#fff",
           borderRadius: 18,
@@ -314,20 +337,22 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
 
                 {/* Action buttons */}
                 <div style={{ display: "flex", gap: 10 }}>
-                  <a
-                    href={`mailto:${s.email}?subject=Hi%20from%20a%20fellow%20Uni%20Mate%20student%20%E2%9C%88%EF%B8%8F&body=Hi%20${encodeURIComponent(s.full_name.split(" ")[0])}%2C%0A%0AI%20found%20you%20on%20Uni%20Mate%20%E2%80%94%20looks%20like%20we're%20both%20heading%20to%20${encodeURIComponent(s.university_name)}!`}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmail(v => !v)}
+                    aria-expanded={showEmail}
                     style={{
                       flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
                       fontFamily: appleFont, fontWeight: 600, fontSize: 15, padding: "13px 12px",
                       borderRadius: 980, cursor: "pointer", border: "none", transition: ".18s",
-                      textDecoration: "none", background: "#0071e3", color: "#fff",
+                      background: "#0071e3", color: "#fff",
                     }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" />
                     </svg>
                     Email
-                  </a>
+                  </button>
 
                   {s.phone ? (
                     <a
@@ -357,6 +382,41 @@ export default function StudentCard({ peer: s, myTravelDate, myDepartureFrom, my
                     </div>
                   )}
                 </div>
+
+                {showEmail && (
+                  <div
+                    data-testid="peer-email-panel"
+                    style={{
+                      marginTop: 12, background: "#f5f5f7", borderRadius: 14, padding: "12px 14px",
+                      display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: "#1d1d1f",
+                        wordBreak: "break-all", userSelect: "text", WebkitUserSelect: "text",
+                      }}
+                    >
+                      {s.email}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (await copyText(s.email)) {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }
+                      }}
+                      style={{
+                        fontFamily: appleFont, fontWeight: 600, fontSize: 13, padding: "8px 16px",
+                        borderRadius: 980, border: "none", cursor: "pointer",
+                        background: copied ? "#34C759" : "#0071e3", color: "#fff", transition: ".18s",
+                      }}
+                    >
+                      {copied ? "Copied ✓" : "Copy"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

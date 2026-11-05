@@ -64,7 +64,13 @@ test.describe('8. peers, filters, flights, phone sharing (Canada pool)', () => {
     await search.fill(`Sam Flight ${tag}`);
     await page.getByText(`Sam Flight ${tag}`).first().click();
     await expect(page.locator('a[href^="tel:"]')).toHaveCount(0);
-    await expect(page.locator('a[href^="mailto:"]').first()).toBeVisible();
+    // Email reveals the address inline (no mailto navigation) with a Copy button
+    const urlBefore = page.url();
+    await page.getByRole('button', { name: 'Email' }).click();
+    await expect(page.getByTestId('peer-email-panel')).toBeVisible();
+    await expect(page.getByTestId('peer-email-panel').getByRole('button', { name: 'Copy' })).toBeVisible();
+    expect(page.url()).toBe(urlBefore);
+    await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     // dropdown filters + chips + clear all
@@ -76,7 +82,15 @@ test.describe('8. peers, filters, flights, phone sharing (Canada pool)', () => {
     await expect(page.getByText(`Dana Day ${tag}`)).toBeVisible();
 
     // phone-sharing toggle persists
-    await page.getByRole('button', { name: /Share my number/ }).click();
+    const shareSwitch = page.getByRole('switch', { name: /Share my number/ });
+    await expect(shareSwitch).toHaveAttribute('aria-checked', 'false');
+    // a failed save rolls the switch back
+    await page.route('**/api/students/share-phone', r => r.fulfill({ status: 500, body: '{}' }));
+    await shareSwitch.click();
+    await expect(shareSwitch).toHaveAttribute('aria-checked', 'false');
+    await page.unroute('**/api/students/share-phone');
+    await shareSwitch.click();
+    await expect(shareSwitch).toHaveAttribute('aria-checked', 'true');
     await expect.poll(async () => (await testSql()`SELECT share_phone FROM student_profiles WHERE user_id = ${viewer.id}`)[0].share_phone).toBe(true);
     const stored = await testSql()`SELECT arrival FROM flight_details WHERE user_id = ${viewer.id}`;
     expect(stored[0].arrival).toBe('Toronto (YYZ)');

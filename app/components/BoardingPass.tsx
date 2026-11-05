@@ -39,13 +39,14 @@ interface BoardingPassProps {
   onAddFlight: () => void;
   sharePhone: boolean;
   onTogglePhone: () => void;
+  busy?: boolean;
   phone?: string | null;
 }
 
 export default function BoardingPass({
   name, profilePictureUrl, university, course, degreeLevel,
   intakeMonth, intakeYear, city, flightDetails, onAddFlight,
-  sharePhone, onTogglePhone, phone,
+  sharePhone, onTogglePhone, phone, busy,
 }: BoardingPassProps) {
   const days = flightDetails ? daysToFly(flightDetails.travel_date) : null;
   return (
@@ -105,26 +106,22 @@ export default function BoardingPass({
 
         <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <button
+            type="button"
+            role="switch"
+            aria-checked={sharePhone}
+            aria-label="Share my number"
+            disabled={busy}
             onClick={onTogglePhone}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 9,
-              background: "none", border: "none", padding: "8px 0", cursor: "pointer",
-              fontFamily: "var(--font-body)",
-            }}
+            className="sw-row"
           >
-            <span style={{
-              width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
-              background: sharePhone ? "#22c55e" : "#ef4444",
-              boxShadow: sharePhone
-                ? "0 0 0 3px rgba(34,197,94,.25)"
-                : "0 0 0 3px rgba(239,68,68,.22)",
-              display: "inline-block", transition: "background .2s, box-shadow .2s",
-            }} />
-            <span style={{ fontWeight: 700, fontSize: ".84rem", color: "var(--ink-soft)" }}>
-              Share my number
+            <span className={`sw-track${sharePhone ? " sw-on" : ""}`} aria-hidden="true">
+              <span className="sw-thumb" />
             </span>
-            <span style={{ fontSize: ".78rem", color: sharePhone ? "#16a34a" : "#dc2626", fontWeight: 600 }}>
-              {sharePhone ? "On" : "Off"}
+            <span className="sw-text">
+              <span className="sw-title">Share my number</span>
+              <span className="sw-help">
+                {sharePhone ? "Peers can see your number" : "Only you can see your number"}
+              </span>
             </span>
           </button>
 
