@@ -17,10 +17,11 @@ Gaps in the process described in [`workflow.md`](./workflow.md). Fix one at a ti
 - **Fix:** in Vercel, scope the production env vars to Production only and give Preview its own values (a Neon preview branch, a different `JWT_SECRET`, SMTP sink or Mailpit-like service, no Blob token). Document which vars Preview needs.
 - **Done when:** a preview deploy cannot read or write production data.
 
-## 4. [ ] Protect `main` and require checks
+## 4. [x] Protect `main` and require checks (GitHub done: ruleset `Protect main`; Neon branch protection is not available on the Free plan, see below)
 - **Problem:** nothing technical stops a direct push to `main` or a merge with failing checks (the rule is only in `AGENTS.md`). Neon production is also unprotected (plan limit).
 - **Fix:** GitHub branch protection on `main`: require a pull request and the CI checks from item 2; no force pushes. Check whether Neon branch protection is available on the current plan.
 - **Done when:** a direct push to `main` is rejected.
+- **Result (2026-11-05):** ruleset `Protect main` (id 26651681) on the default branch: pull request required (0 approvals, solo repo), required checks `Checks (tsc, lint, unit)` and `Playwright (api, e2e, security)` (a skipped Playwright job counts as passed, so docs-only PRs are not blocked), force pushes and deletion blocked, no bypass actors. Repo merge settings: squash only, head branches auto-deleted. Verified through the effective-rules API; a real direct push was not attempted so as not to risk a stray commit. **Neon:** protected branches need a paid plan (Launch: 2, Scale: 5); production stays unprotected until then. Child branches of a protected branch also get new role passwords, which CI already handles because the create-branch action returns the new connection string.
 
 ## 5. [ ] Docs drift after merges
 - **Problem:** docs fell behind (e.g. the changelog said "not yet merged" after merging; PR #16 had to fix it).

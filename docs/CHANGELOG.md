@@ -6,6 +6,15 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-05 — Process: `main` is protected, CI checks are required (PR #20, not yet merged)
+**Why:** nothing technical stopped a direct push to `main`, a force push, or a merge with failing checks; the rule lived only in `AGENTS.md` (workflow gap #4). GitHub reported "Branch not protected" and no rulesets.
+
+**What changed (GitHub settings, not in git):** ruleset `Protect main` on the default branch: pull request required (0 approvals; a solo reviewer cannot approve their own PR), required checks `Checks (tsc, lint, unit)` and `Playwright (api, e2e, security)` (a skipped Playwright job counts as passed, so docs-only PRs still merge), force pushes and deletion blocked, no bypass actors (applies to the owner too). Repository merge settings: squash only, head branches auto-deleted after merge. In git: `docs/workflow.md`, `docs/workflow-todo.md` and `AGENTS.md` describe the rule.
+
+**Evidence:** effective rules for `main` listed through the API match the ruleset. **Not done:** Neon production branch protection needs a paid plan (project is on Free). A real direct push was not attempted so as not to risk a stray commit on `main`. **Tests:** docs only; this PR is the first to merge under the rule. **Deploy:** none.
+
+---
+
 ## 2026-11-05 — Vercel previews no longer use production data, secrets or email (PR #18, merged)
 **Why:** `vercel env ls` showed `DATABASE_CONNECTION_STRING`, `JWT_SECRET`, `GMAIL_*`, `ADMIN_EMAIL`, `CRON_SECRET` and the Blob store set for both Production and Preview. Every pushed branch built a preview that read and wrote live student data, sent real email, accepted production-signed tokens, treated the production admin email as admin and accepted the production cron secret (workflow gap #3). `APP_URL` was Production-only, so preview email links had no base URL.
 
