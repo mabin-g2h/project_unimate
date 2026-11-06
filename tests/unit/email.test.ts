@@ -99,3 +99,19 @@ describe('HTML escaping', () => {
     expect(sentHtml()).not.toContain(xss);
   });
 });
+
+describe('support request email', () => {
+  it('goes to the support inbox, replies to the student, escapes input and keeps the subject on one line', async () => {
+    vi.stubEnv('SMTP_HOST', '');
+    sendMail.mockResolvedValue({});
+    const { sendSupportRequestEmail } = await load();
+    await sendSupportRequestEmail({ name: 'Ann\r\nBcc: x@evil.test', email: 'ann@x.test', university: null, country: 'Australia', message: '<script>alert(1)</script>\nline2' });
+    const mail = sendMail.mock.calls[0][0] as { to: string; replyTo: string; subject: string; html: string };
+    expect(mail.to).toBe('noreply@unimate.test');
+    expect(mail.replyTo).toBe('ann@x.test');
+    expect(mail.subject).not.toMatch(/[\r\n]/);
+    expect(mail.html).not.toContain('<script>');
+    expect(mail.html).toContain('&lt;script&gt;');
+    expect(mail.html).toContain('<br>line2');
+  });
+});

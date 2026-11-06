@@ -8,6 +8,7 @@ import FlyMateExplorer from "./components/FlyMateExplorer";
 import FlightDetailsModal, { FlightDetails } from "./components/FlightDetailsModal";
 import Toast, { useToast } from "./components/Toast";
 import { Peer } from "./components/StudentCard";
+import HelpModal from "./components/HelpModal";
 import OnboardingTour from "./components/OnboardingTour";
 import { WELCOME_VIDEO_URL, loomEmbedUrl } from "@/lib/onboarding";
 
@@ -41,6 +42,7 @@ export default function Home() {
   const [showFlightModal, setShowFlightModal] = useState(false);
   const [tourDone, setTourDone] = useState(false);
   const [replaying, setReplaying] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const { toasts, showToast } = useToast();
 
   const loadData = useCallback(async () => {
@@ -167,7 +169,7 @@ export default function Home() {
 
   return (
     <>
-      <Navbar />
+      <Navbar onHelp={() => setShowHelp(true)} />
 
       <header style={{ padding: "34px 0 8px" }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
@@ -239,6 +241,10 @@ export default function Home() {
         <button type="button" onClick={() => setReplaying(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal)", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: ".8rem", textDecoration: "underline", padding: "10px 6px" }}>
           Replay the dashboard tour
         </button>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => setShowHelp(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal)", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: ".8rem", textDecoration: "underline", padding: "10px 6px" }}>
+          Need help?
+        </button>
       </footer>
 
       {showFlightModal && (
@@ -258,6 +264,8 @@ export default function Home() {
           onFinish={finishTour}
         />
       )}
+
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} onToast={showToast} />}
 
       <Toast toasts={toasts} />
 

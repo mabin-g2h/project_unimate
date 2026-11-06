@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import AppLogo from "./AppLogo";
 
-export default function Navbar() {
+export default function Navbar({ onHelp }: { onHelp?: () => void }) {
   const router = useRouter();
 
   const signOut = async () => {
@@ -33,6 +33,27 @@ export default function Navbar() {
             </svg>
             Verified
           </span>
+          {onHelp && (
+            <button
+              onClick={onHelp}
+              title="Need help?"
+              aria-label="Need help? Contact UniMate support"
+              style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                border: "1px solid var(--line)", background: "var(--teal-tint)", color: "var(--teal-deep)",
+                borderRadius: 200, padding: "10px 14px", cursor: "pointer",
+                fontFamily: "var(--font-body)", fontWeight: 600, fontSize: ".82rem",
+                minHeight: 44, minWidth: 44, transition: ".18s",
+              }}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5" />
+                <line x1="12" y1="17.8" x2="12" y2="17.8" />
+              </svg>
+              <span className="hide-mobile-inline">Help</span>
+            </button>
+          )}
           <button
             onClick={signOut}
             title="Sign out"
