@@ -45,7 +45,8 @@ CREATE TABLE student_profiles (
   revoke_reason         TEXT,                            -- set when status changes to 'revoked'; cleared to NULL on unrevoke
   course_start_date     DATE,                            -- admin-entered at review; mandatory to approve; NULL otherwise
   expiry_date           DATE,                            -- snapshot = course_start_date + ACCOUNT_LIFESPAN_DAYS; drives the archive sweep
-  archived_at           TIMESTAMPTZ                      -- set when status changes to 'archived' (access expired); admin-only thereafter
+  archived_at           TIMESTAMPTZ,                     -- set when status changes to 'archived' (access expired); admin-only thereafter
+  onboarded_at          TIMESTAMPTZ                      -- set when the student finishes or skips the first-visit dashboard tour; NULL = tour not yet seen
 );
 
 CREATE TABLE flight_details (
@@ -282,3 +283,8 @@ CREATE TABLE rate_limits (
 -- Stops two concurrent submits (e.g. the consent page's network retry racing the first request) from both inserting a profile.
 -- Check first: SELECT user_id FROM student_profiles GROUP BY user_id HAVING count(*) > 1;   (must return no rows; production had 0 on 2026-11-03)
 -- CREATE UNIQUE INDEX IF NOT EXISTS student_profiles_user_id_key ON student_profiles (user_id);
+
+-- Migration 022 — first-visit dashboard tour flag (REQUIRED before deploying the welcome tour)
+-- ALTER TABLE student_profiles ADD COLUMN IF NOT EXISTS onboarded_at TIMESTAMPTZ;
+-- Backfill so students who already use the dashboard do not get the tour (pending/rejected rows stay NULL and see it after approval):
+-- UPDATE student_profiles SET onboarded_at = NOW() WHERE onboarded_at IS NULL AND status IN ('approved','revoked','archived');

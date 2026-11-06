@@ -169,7 +169,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
     <section style={{ maxWidth: 1120, margin: "46px auto 0", padding: "0 20px" }}>
 
       {/* Mobile: toggle bar — hidden on desktop via CSS */}
-      <div className="filters-toggle-bar" style={{ marginBottom: 14, gap: 10, alignItems: "center" }}>
+      <div className="filters-toggle-bar" data-tour="filters" style={{ marginBottom: 14, gap: 10, alignItems: "center" }}>
         <button
           onClick={() => setFiltersOpen(true)}
           style={{
@@ -221,7 +221,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
 
         <div>
           <div style={{ marginBottom: 14, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ minWidth: 0, flex: "1 1 260px" }}>
+            <div data-tour="peers" style={{ minWidth: 0, flex: "1 1 260px" }}>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.45rem", letterSpacing: "-.02em" }}>
                 Your FlyMates
               </div>
@@ -229,7 +229,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
                 Verified students heading to {myCountry || "your destination country"}. Filter by university, city, course, intake and more.
               </div>
             </div>
-            <button type="button" onClick={() => setInviteOpen(true)} className="invite-pill">
+            <button type="button" onClick={() => setInviteOpen(true)} className="invite-pill" data-tour="invite">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
               </svg>
@@ -238,7 +238,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
           </div>
 
           {/* Horizontal filter row — hidden on mobile, replaced by drawer button */}
-          <div className="filter-row-desktop">
+          <div className="filter-row-desktop" data-tour="filters">
             {filterControls}
           </div>
 
@@ -313,7 +313,7 @@ export default function FlyMateExplorer({ peers, myTravelDate, myDepartureFrom, 
               <p>Try clearing a filter or widening your search.</p>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 14 }}>
+            <div data-tour="peer-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 14 }}>
               {list.map((s, i) => (
                 <StudentCard key={s.id} peer={s} myTravelDate={myTravelDate} myDepartureFrom={myDepartureFrom} myArrival={myArrival} myAirline={myAirline} index={i} onToast={onToast} />
               ))}

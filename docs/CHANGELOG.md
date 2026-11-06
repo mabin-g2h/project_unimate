@@ -6,6 +6,22 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-05 — First-visit dashboard welcome: optional Loom video + guided tour (not yet merged)
+**Why:** an approved student lands on a dashboard (boarding pass, flight form, peer grid, phone-share switch, invite button) with no explanation of why any of it matters, so the actions that make the network useful (add flight details, share a number, invite a peer) depend on students guessing. No onboarding existed (`docs/backlog.md` had no entry).
+
+**What changed**
+- **Migration 022:** `student_profiles.onboarded_at TIMESTAMPTZ` (NULL = tour not seen) plus a backfill that stamps every existing approved/revoked/archived row, so current students do not get the tour. Pending/rejected rows stay NULL and see it after approval.
+- `POST /api/students/onboarded` (`{ outcome: 'completed' | 'skipped', step }`): session required, idempotent (`COALESCE`, first timestamp wins), approved students only (404 otherwise), awaited `log()` rows `tour_completed` / `tour_skipped` (category `dashboard`, metadata outcome + step only) so completion shows in the admin Logs tab. `GET /api/students/me` now returns `onboarded_at`.
+- `app/components/OnboardingTour.tsx`: optional video dialog, then a spotlight tour (welcome, boarding pass, flight details, FlyMates, filters, contacting peers, share number, invite, done). Steps whose target is hidden or absent are skipped (e.g. "Say hello" with no peers). Desktop: bubble beside the target. Phone (<= 640px, same breakpoint as the filter drawer): bottom card with the target scrolled above it; the filter step points at the Filters button. Escape = skip; focus kept in the card; `prefers-reduced-motion` honoured.
+- `data-tour` markers on `BoardingPass` and `FlyMateExplorer`. Dashboard footer has a "Replay the dashboard tour" button (does not change the flag or log).
+- `lib/onboarding.ts`: `WELCOME_VIDEO_URL` (empty = no video step) and `loomEmbedUrl()` (only `https://[www.]loom.com/share|embed/<id>` accepted, converted to the embed URL).
+
+**Tests:** unit `onboarding.test.ts` (13); api `onboarding.spec.ts`; e2e `dashboard-tour.spec.ts` (full walk, skip/Escape, replay, 390px bottom card); authz matrix gains the new route. `seedProfile` now defaults `onboarded_at` to now (option `onboarded: false`) so existing dashboard specs are not covered by the overlay.
+
+**Deploy notes:** apply migration 022 to production **before** the PR's CI run and before deploying (CI branches production, so its `seedProfile` needs the column), and to the Neon `preview` branch by hand. No new env var, no security-header change (Loom is framed *by* us, `X-Frame-Options` only governs our pages). To switch the video on later, set `WELCOME_VIDEO_URL` in `lib/onboarding.ts`. **Known limits:** if the save request fails the tour can show again on the next visit; the video is not shown to students who already saw the tour unless they use Replay.
+
+---
+
 ## 2026-11-05 — Process: `main` is protected, CI checks are required (PR #20, not yet merged)
 **Why:** nothing technical stopped a direct push to `main`, a force push, or a merge with failing checks; the rule lived only in `AGENTS.md` (workflow gap #4). GitHub reported "Branch not protected" and no rulesets.
 
