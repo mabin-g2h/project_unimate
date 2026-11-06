@@ -347,3 +347,37 @@ export async function sendAccountExpiredEmail(to: string, name: string) {
     `),
   });
 }
+
+// Student help request → the UniMate support inbox (GMAIL_USER, i.e. support@unimate.club).
+// Reply-To is the student so the team's reply goes straight back to them. The message is
+// never stored; it only exists in this email. Subject strips CR/LF (header safety).
+export async function sendSupportRequestEmail(req: {
+  name: string;
+  email: string;
+  university: string | null;
+  country: string | null;
+  message: string;
+}) {
+  const oneLine = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
+  const row = (label: string, value: string) =>
+    `<tr><td style="color:#8E8E93;font-size:13px;padding:0 14px 6px 0;white-space:nowrap;">${label}</td><td style="color:#1D1D1F;font-size:14px;font-weight:600;padding:0 0 6px;">${escapeHtml(value)}</td></tr>`;
+  await deliver('support_request', {
+    from: `"UniMate" <${process.env.GMAIL_USER}>`,
+    to: process.env.GMAIL_USER,
+    replyTo: oneLine(req.email),
+    subject: `Help request from ${oneLine(req.name)}`,
+    html: wrap(`
+      <h2 style="color:#1D1D1F;font-size:22px;font-weight:800;margin:0 0 12px;">New help request</h2>
+      <table role="presentation" style="margin:0 0 20px;border-collapse:collapse;">
+        ${row('Student', req.name)}
+        ${row('Email', req.email)}
+        ${req.university ? row('University', req.university) : ''}
+        ${req.country ? row('Country', req.country) : ''}
+      </table>
+      <div style="background:#E8ECFA;border-radius:12px;padding:20px;margin-bottom:20px;">
+        <p style="color:#0635A0;font-size:15px;line-height:1.6;margin:0;">${escapeHtml(req.message).replace(/\n/g, '<br>')}</p>
+      </div>
+      <p style="color:#8E8E93;font-size:13px;margin:0;">Reply to this email to answer ${escapeHtml(req.name)} directly.</p>
+    `),
+  });
+}

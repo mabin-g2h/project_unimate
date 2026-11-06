@@ -259,3 +259,22 @@ test.describe('11. mobile viewport (390px)', () => {
     expect(await noHorizontalScroll(page), 'admin overflow px').toBeLessThanOrEqual(1);
   });
 });
+
+test('10. ask for help from the navbar and the footer', async ({ page }) => {
+  const u = await seedUser();
+  await seedProfile(u.id, { name: 'Help UI' });
+  await studentLogin(page, u.email);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(page.getByRole('button', { name: /Need help\?/ }).first()).toBeVisible(); // reachable on phones
+  await page.getByRole('button', { name: 'Need help? Contact UniMate support' }).click();
+  const send = page.getByRole('button', { name: 'Send to support' });
+  await expect(send).toBeDisabled(); // empty message
+  await page.getByPlaceholder('Describe your issue or question…').fill('My flight date changed, how do I update it?');
+  await send.click();
+  const mail = await waitForMail(process.env.GMAIL_USER ?? 'test@unimate.test', 'Help UI');
+  expect(await mailHtml(mail.ID)).toContain('My flight date changed');
+  await expect(page.getByPlaceholder('Describe your issue or question…')).toHaveCount(0); // closed on success
+  // footer link opens the same sheet
+  await page.getByRole('button', { name: 'Need help?', exact: true }).click();
+  await expect(page.getByText('How can we help?')).toBeVisible();
+});
