@@ -10,7 +10,7 @@ export async function GET() {
     SELECT sp.full_name, sp.university_name, sp.degree_level, sp.course_name,
            sp.intake_month, sp.intake_year, sp.country_of_origin,
            sp.country_of_education, sp.city,
-           sp.profile_picture_url, sp.phone, sp.share_phone,
+           sp.profile_picture_url, sp.phone, sp.share_phone, sp.onboarded_at,
            fd.departure_from, fd.arrival, fd.travel_date::text, fd.airline
     FROM student_profiles sp
     LEFT JOIN flight_details fd ON fd.user_id = sp.user_id

@@ -8,6 +8,8 @@ import FlyMateExplorer from "./components/FlyMateExplorer";
 import FlightDetailsModal, { FlightDetails } from "./components/FlightDetailsModal";
 import Toast, { useToast } from "./components/Toast";
 import { Peer } from "./components/StudentCard";
+import OnboardingTour from "./components/OnboardingTour";
+import { WELCOME_VIDEO_URL, loomEmbedUrl } from "@/lib/onboarding";
 
 interface MyProfile {
   full_name: string;
@@ -22,6 +24,7 @@ interface MyProfile {
   profile_picture_url: string | null;
   phone: string | null;
   share_phone: boolean;
+  onboarded_at: string | null;
   departure_from: string | null;
   arrival: string | null;
   travel_date: string | null;
@@ -36,6 +39,8 @@ export default function Home() {
   const [sharePhone, setSharePhone] = useState(false);
   const [togglingPhone, setTogglingPhone] = useState(false);
   const [showFlightModal, setShowFlightModal] = useState(false);
+  const [tourDone, setTourDone] = useState(false);
+  const [replaying, setReplaying] = useState(false);
   const { toasts, showToast } = useToast();
 
   const loadData = useCallback(async () => {
@@ -97,6 +102,17 @@ export default function Home() {
   };
 
 
+
+  const finishTour = (outcome: "completed" | "skipped", step: number) => {
+    if (replaying) { setReplaying(false); return; }
+    setTourDone(true);
+    fetch("/api/students/onboarded", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome, step }),
+      keepalive: true,
+    }).catch(() => {});
+  };
 
   if (!ready) return (
     <div className="screen" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -219,7 +235,10 @@ export default function Home() {
 
       <footer style={{ textAlign: "center", marginTop: 54, paddingTop: 24, borderTop: "1px solid var(--line)", color: "var(--ink-faint)", fontSize: ".8rem", maxWidth: 1120, margin: "54px auto 0", padding: "24px 20px 0" }}>
         <b style={{ color: "var(--ink-soft)" }}>Uni Mate</b> — FlyMate peer network.<br />
-        Phone numbers are shown only where a student has toggled sharing on.
+        Phone numbers are shown only where a student has toggled sharing on.<br />
+        <button type="button" onClick={() => setReplaying(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal)", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: ".8rem", textDecoration: "underline", padding: "10px 6px" }}>
+          Replay the dashboard tour
+        </button>
       </footer>
 
       {showFlightModal && (
@@ -228,6 +247,15 @@ export default function Home() {
           destinationCountry={myProfile?.country_of_education ?? ""}
           onSave={handleFlightSaved}
           onClose={() => setShowFlightModal(false)}
+        />
+      )}
+
+      {myProfile && !showFlightModal && (replaying || (!myProfile.onboarded_at && !tourDone)) && (
+        <OnboardingTour
+          firstName={firstName}
+          country={myProfile.country_of_education}
+          videoEmbedUrl={WELCOME_VIDEO_URL ? loomEmbedUrl(WELCOME_VIDEO_URL) : null}
+          onFinish={finishTour}
         />
       )}
 

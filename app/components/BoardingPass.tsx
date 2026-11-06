@@ -50,7 +50,7 @@ export default function BoardingPass({
 }: BoardingPassProps) {
   const days = flightDetails ? daysToFly(flightDetails.travel_date) : null;
   return (
-    <div className="boarding-pass-layout" style={{
+    <div className="boarding-pass-layout" data-tour="pass" style={{
       marginTop: 24, background: "var(--paper)", borderRadius: "var(--radius)",
       boxShadow: "var(--shadow)", border: "1px solid var(--line-soft)", overflow: "hidden",
       position: "relative",
@@ -113,6 +113,7 @@ export default function BoardingPass({
             disabled={busy}
             onClick={onTogglePhone}
             className="sw-row"
+            data-tour="share"
           >
             <span className={`sw-track${sharePhone ? " sw-on" : ""}`} aria-hidden="true">
               <span className="sw-thumb" />
@@ -146,7 +147,7 @@ export default function BoardingPass({
       </div>
 
       {/* Stub */}
-      <div className="boarding-pass-stub" style={{
+      <div className="boarding-pass-stub" data-tour="flight" style={{
         width: 220, flexShrink: 0,
         background: "linear-gradient(160deg,var(--teal-deep),var(--teal))",
         color: "#fff", padding: "24px 22px", position: "relative",

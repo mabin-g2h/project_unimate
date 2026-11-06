@@ -24,6 +24,8 @@ export interface ProfileOpts {
   status?: string; country?: string; university?: string; city?: string; course?: string;
   degree?: string; month?: string; year?: number; phone?: string; sharePhone?: boolean; name?: string;
   expiry?: string | null; courseStart?: string | null;
+  // Dashboard tour flag: seeded students count as having seen it unless a test passes false.
+  onboarded?: boolean;
 }
 
 export async function seedProfile(userId: number, o: ProfileOpts = {}): Promise<number> {
@@ -31,12 +33,13 @@ export async function seedProfile(userId: number, o: ProfileOpts = {}): Promise<
   const [p] = await sql`INSERT INTO student_profiles
     (user_id, full_name, phone, country_of_origin, country_of_education, university_name, degree_level, course_name,
      intake_month, intake_year, passport_url, admission_letter_url, profile_picture_url, status, share_phone, consented_at,
-     city, gender, course_start_date, expiry_date)
+     city, gender, course_start_date, expiry_date, onboarded_at)
     VALUES (${userId}, ${o.name ?? 'Test Student'}, ${o.phone ?? '+919876543210'}, 'India', ${o.country ?? 'Australia'},
      ${o.university ?? 'University of Melbourne'}, ${o.degree ?? "Master's Degree"}, ${o.course ?? 'Computer Science'},
      ${o.month ?? 'July'}, ${o.year ?? 2027}, '/__test_uploads/seed_passport.pdf', '/__test_uploads/seed_admission.pdf',
      '/__test_uploads/seed_photo.png', ${o.status ?? 'approved'}, ${o.sharePhone ?? false}, NOW(),
-     ${o.city ?? 'Melbourne'}, 'Male', ${o.courseStart ?? null}, ${o.expiry ?? null}) RETURNING id`;
+     ${o.city ?? 'Melbourne'}, 'Male', ${o.courseStart ?? null}, ${o.expiry ?? null},
+     ${o.onboarded === false ? null : new Date().toISOString()}) RETURNING id`;
   return p.id as number;
 }
 

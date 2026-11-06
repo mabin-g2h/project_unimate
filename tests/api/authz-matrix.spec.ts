@@ -59,9 +59,9 @@ test.describe('anonymous', () => {
   test('GET /api/auth/me -> 401 (public prefix, route-level check)', async () => {
     expect((await send(await ctx(), { method: 'GET', path: '/api/auth/me' })).status()).toBe(401);
   });
-  test('POST /api/students/flight, share-phone, invite-peer, student/register -> 307', async () => {
+  test('POST /api/students/flight, share-phone, invite-peer, onboarded, student/register -> 307', async () => {
     const c = await ctx();
-    for (const [method, path] of [['POST', '/api/students/flight'], ['PUT', '/api/students/share-phone'], ['POST', '/api/students/invite-peer'], ['POST', '/api/student/register']] as const) {
+    for (const [method, path] of [['POST', '/api/students/flight'], ['PUT', '/api/students/share-phone'], ['POST', '/api/students/invite-peer'], ['POST', '/api/students/onboarded'], ['POST', '/api/student/register']] as const) {
       const r = await send(c, { method, path, data: {} });
       expect(r.status(), path).toBe(307);
     }
