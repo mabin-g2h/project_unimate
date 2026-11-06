@@ -6,6 +6,20 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-06 — "Need help?" support request from the dashboard (not yet merged)
+**Why:** students had no way to reach UniMate when something went wrong; emails say "contact our support team" but give no address or link (`docs/backlog.md` had no entry). The team wants plain email conversations, not a ticket system.
+
+**What changed**
+- `POST /api/students/support` (`{ message }`, 1-2000 chars): session + approved profile required (401/404), rate-limited 5/student/hour plus a per-IP cap (`lib/rate-limit.ts`, no new table), emails the support inbox and answers `{ ok: true }`. Logs `support_request_sent` / `support_request_failed` (category `dashboard`) with message length only; **the message is never stored or logged**.
+- `sendSupportRequestEmail` in `lib/email.ts`: to `GMAIL_USER` (support@unimate.club in production), `Reply-To` = the student, body shows name, email, university, country and the escaped message; CR/LF stripped from the subject.
+- `app/components/HelpModal.tsx` (same sheet style as InvitePeerModal) opened from a new help icon in the Navbar (next to Sign out; label hidden on phones) and a "Need help?" link in the dashboard footer.
+
+**Tests:** unit `email.test.ts` (support template); api `support.spec.ts`; authz matrix gains the route; e2e `dashboard-admin-ui.spec.ts` #10 (navbar + footer, 390px).
+
+**Deploy notes:** no migration, no new env var. Production `GMAIL_USER` must stay support@unimate.club; Preview's fake `GMAIL_USER` means preview requests go nowhere real. **Known limits:** pending/rejected/archived students cannot use it (no Navbar on those pages); no delivery receipt beyond the `email_sent` log row.
+
+---
+
 ## 2026-11-05 — First-visit dashboard welcome: optional Loom video + guided tour (not yet merged)
 **Why:** an approved student lands on a dashboard (boarding pass, flight form, peer grid, phone-share switch, invite button) with no explanation of why any of it matters, so the actions that make the network useful (add flight details, share a number, invite a peer) depend on students guessing. No onboarding existed (`docs/backlog.md` had no entry).
 
