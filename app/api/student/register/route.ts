@@ -187,9 +187,14 @@ export async function POST(request: NextRequest) {
     await sendRegistrationAcknowledgement(session.email, fullName);
   } catch { /* logged in lib/email.ts deliver() */ }
 
+  // Awaited: Vercel freezes the function once the response returns, so a fire-and-forget send was
+  // killed before it sent or logged anything (production, 2026-10-21..11-12: 6 of ~21 alerts arrived).
+  // A failure is logged by deliver() and must not turn the saved registration into a 500.
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail) {
-    sendAdminRegistrationNotification(adminEmail, fullName, session.email).catch(() => {});
+    try {
+      await sendAdminRegistrationNotification(adminEmail, fullName, session.email);
+    } catch { /* logged in lib/email.ts deliver() */ }
   }
 
   return NextResponse.json({ message: 'Registration submitted successfully.' });
