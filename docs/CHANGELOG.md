@@ -6,6 +6,18 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-15 — Admin "new registration" alert is awaited (not yet merged)
+**Why:** admins reported not receiving the alert when a student submits the registration form. Production `student_error_logs` (2026-10-21..11-12): ~21 `registration_submitted` events but only 6 `admin_registration_notice` `email_sent` rows (last on 11-05; none for the 11-09, 11-11 and two 11-12 registrations), and zero `email_send_failed` rows. The alert was fire-and-forget (`.catch(() => {})`), so Vercel froze the function after the response and killed the send before it sent or logged anything. Production `ADMIN_EMAIL` (read from the logged recipient) is the two guidetoheights.com addresses, so config was not the problem.
+
+**What changed**
+- `POST /api/student/register` now `await`s `sendAdminRegistrationNotification` inside a try/catch, like the student acknowledgement. A mail failure is logged by `deliver()` (`email_send_failed`) and does not fail the saved registration. Recipients are unchanged (every `ADMIN_EMAIL` address; DB admins are not added).
+
+**Tests:** api `register-validation.spec.ts` — the `admin_registration_notice` `email_sent` log row exists immediately after the 200 (no polling).
+
+**Deploy notes:** no migration, no env var. Registration response time grows by one SMTP send. **Known limits:** admins added via Manage Admins still do not get the alert; inbox/spam placement of past alerts was not checked.
+
+---
+
 ## 2026-11-06 — "Need help?" support request from the dashboard (not yet merged)
 **Why:** students had no way to reach UniMate when something went wrong; emails say "contact our support team" but give no address or link (`docs/backlog.md` had no entry). The team wants plain email conversations, not a ticket system.
 

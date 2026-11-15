@@ -28,6 +28,18 @@ test.describe('register: validation', () => {
     }
   });
 
+  test('admin alert is finished (sent and logged) by the time the response returns', async () => {
+    // No polling on purpose: on Vercel the function freezes right after the response, so a send still
+    // in flight at that moment is lost. The log row is written only after the SMTP send completes.
+    const { user, api } = await newUnregisteredStudent();
+    expect((await post(api, registerForm())).status()).toBe(200);
+    const rows = await testSql()`
+      SELECT 1 FROM student_error_logs
+      WHERE event = 'email_sent' AND metadata->>'type' = 'admin_registration_notice' AND created_at > NOW() - INTERVAL '1 minute'
+        AND EXISTS (SELECT 1 FROM student_error_logs r WHERE r.event = 'registration_submitted' AND r.user_id = ${user.id} AND r.created_at <= student_error_logs.created_at)`;
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
   test('second submission -> 409', async () => {
     const { api } = await newUnregisteredStudent();
     expect((await post(api, registerForm())).status()).toBe(200);
