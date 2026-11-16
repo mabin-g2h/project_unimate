@@ -143,6 +143,51 @@ export async function sendAdminRegistrationNotification(adminEmail: string, stud
   });
 }
 
+// "2 days 5 hours" / "5 hours" / "under 1 hour" — how long an application has been waiting.
+export function formatWaiting(submittedAt: Date | string, now: Date = new Date()): string {
+  const mins = Math.max(0, Math.floor((now.getTime() - new Date(submittedAt).getTime()) / 60000));
+  const days = Math.floor(mins / 1440);
+  const hours = Math.floor((mins % 1440) / 60);
+  const unit = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  if (days > 0) return hours > 0 ? `${unit(days, 'day')} ${unit(hours, 'hour')}` : unit(days, 'day');
+  if (hours > 0) return unit(hours, 'hour');
+  return 'under 1 hour';
+}
+
+export interface PendingApplicant { name: string; university: string; country: string; submittedAt: Date | string }
+
+const PENDING_REMINDER_MAX_ROWS = 20;
+
+// Daily digest of applications still waiting for review. Names/universities are student-typed,
+// so everything is escaped. No phone, email or document links go in.
+export async function sendPendingReminderEmail(to: string, applicants: PendingApplicant[], now: Date = new Date()) {
+  const n = applicants.length;
+  const shown = applicants.slice(0, PENDING_REMINDER_MAX_ROWS);
+  const rows = shown.map(a => `
+        <tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #E5E5EA;font-size:14px;color:#1D1D1F;"><strong>${escapeHtml(a.name)}</strong><br/><span style="color:#6E6E73;font-size:13px;">${escapeHtml(a.university)} · ${escapeHtml(a.country)}</span></td>
+          <td style="padding:10px 12px;border-bottom:1px solid #E5E5EA;font-size:13px;color:${CORAL};font-weight:700;white-space:nowrap;text-align:right;">${escapeHtml(formatWaiting(a.submittedAt, now))}</td>
+        </tr>`).join('');
+  const more = n > shown.length ? `<p style="color:#6E6E73;font-size:13px;margin:0 0 20px;">+ ${n - shown.length} more in the admin portal.</p>` : '';
+  await deliver('pending_reminder', {
+    from: `"UniMate" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: `${n} application${n === 1 ? '' : 's'} awaiting review — UniMate`,
+    html: wrap(`
+      <h2 style="color:#1D1D1F;font-size:22px;font-weight:800;margin:0 0 12px;">${n} application${n === 1 ? ' is' : 's are'} still waiting for review</h2>
+      <p style="color:#6E6E73;font-size:15px;line-height:1.6;margin:0 0 20px;">
+        Students are waiting for approval to join the UniMate network. Oldest first:
+      </p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 20px;background:#F5F5F7;border-radius:12px;">${rows}
+      </table>
+      ${more}
+      <a href="${appUrl()}/admin" style="display:inline-block;background:${BRAND};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
+        Review in admin portal
+      </a>
+    `),
+  });
+}
+
 export async function sendApprovalEmail(to: string, name: string) {
   const url = `${appUrl()}/login`;
   await deliver('approval', {

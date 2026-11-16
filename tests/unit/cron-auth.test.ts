@@ -28,3 +28,25 @@ describe('cleanup cron authorisation', () => {
     expect((await call('', 'Bearer ')).status).toBe(401);
   });
 });
+
+describe('pending-reminder cron authorisation', () => {
+  const callReminder = async (secret: string, header?: string) => {
+    vi.stubEnv('CRON_SECRET', secret);
+    const { GET } = await import('@/app/api/auth/pending-reminder/route');
+    return GET(new Request('http://x/api/auth/pending-reminder', { headers: header === undefined ? {} : { authorization: header } }));
+  };
+  it('rejects a missing, malformed or wrong secret', async () => {
+    expect((await callReminder('s3cret')).status).toBe(401);
+    expect((await callReminder('s3cret', 's3cret')).status).toBe(401);
+    expect((await callReminder('s3cret', 'Bearer nope!!')).status).toBe(401);
+  });
+  it('fails closed when CRON_SECRET is unset or empty', async () => {
+    expect((await callReminder('')).status).toBe(401);
+    expect((await callReminder('', 'Bearer ')).status).toBe(401);
+  });
+  it('accepts the correct secret and sends nothing when nothing is pending', async () => {
+    const res = await callReminder('s3cret', 'Bearer s3cret'); // sql mock returns []
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ pending: 0, sent: 0, failed: 0 });
+  });
+});

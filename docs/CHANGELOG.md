@@ -6,6 +6,21 @@ What changed, **why**, and the evidence behind it — newest first. `CLAUDE.md` 
 
 ---
 
+## 2026-11-16 — Daily reminder to admins about applications still pending (not yet merged)
+**Why:** admins got exactly one email per registration and nothing after it, so an application nobody acted on stayed `pending` indefinitely and the student waited with no follow-up. Registration is already the weakest funnel step (`CLAUDE.md` product rule 5). The project is on the Vercel **Hobby** plan, where a cron can run only once a day (and fires anywhere within its scheduled hour), so a 3-hourly reminder is not possible; the product choice was one run per day inside 10am-3pm IST.
+
+**What changed**
+- New `GET /api/auth/pending-reminder` (`CRON_SECRET`-gated, fails closed; under `/api/auth/` so middleware lets the cron through). If no application has `status='pending'` it does nothing (no email, no log row). Otherwise it sends **one digest per admin** listing every pending application, oldest first, with waiting time (`sendPendingReminderEmail` in `lib/email.ts`; max 20 rows then "+ N more"; student-typed text escaped; no phone, email or document links), and logs `pending_reminder_sent` (category `admin`; counts only).
+- Recipients: every `ADMIN_EMAIL` address **plus every `users.role='admin'` account** (invited admins), de-duplicated. Sends are awaited with `Promise.allSettled`, so one bad address does not block the rest.
+- `vercel.json`: second cron `30 4 * * *` (04:30 UTC = 10:00 AM IST, lands 10-11 AM IST on Hobby). The midnight cleanup cron is unchanged.
+- Cron bearer check extracted to `isCronAuthorized()` in `lib/auth.ts`, used by both cron routes (behaviour of `/api/auth/cleanup` unchanged).
+
+**Tests:** unit `cron-auth.test.ts` (new route's auth, fail-closed, empty case), `email.test.ts` (`formatWaiting`, template escaping/cap/singular); api `pending-reminder.spec.ts` (401s, no-pending sends nothing, digest to ADMIN_EMAIL + DB admins with no dupes, only pending students, no contact data, approving stops reminders).
+
+**Deploy notes:** no migration, no new env var. After deploy confirm the second job in Vercel → Settings → Cron Jobs. **Known limits:** applications submitted after the run wait until the next morning's reminder (the instant alert still fires); no escalation for long waits; the register-time alert still goes only to `ADMIN_EMAIL`. Ideas in `docs/backlog.md` B19.
+
+---
+
 ## 2026-11-15 — Admin "new registration" alert is awaited (not yet merged)
 **Why:** admins reported not receiving the alert when a student submits the registration form. Production `student_error_logs` (2026-10-21..11-12): ~21 `registration_submitted` events but only 6 `admin_registration_notice` `email_sent` rows (last on 11-05; none for the 11-09, 11-11 and two 11-12 registrations), and zero `email_send_failed` rows. The alert was fire-and-forget (`.catch(() => {})`), so Vercel froze the function after the response and killed the send before it sent or logged anything. Production `ADMIN_EMAIL` (read from the logged recipient) is the two guidetoheights.com addresses, so config was not the problem.
 
