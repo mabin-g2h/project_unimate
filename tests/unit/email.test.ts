@@ -115,3 +115,48 @@ describe('support request email', () => {
     expect(mail.html).toContain('<br>line2');
   });
 });
+
+describe('formatWaiting()', () => {
+  const now = new Date('2026-11-16T10:00:00Z');
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+  const H = 3600_000;
+  it('formats hours, days and the under-an-hour case', async () => {
+    const { formatWaiting } = await load();
+    expect(formatWaiting(ago(20 * 60_000), now)).toBe('under 1 hour');
+    expect(formatWaiting(ago(1 * H), now)).toBe('1 hour');
+    expect(formatWaiting(ago(5 * H), now)).toBe('5 hours');
+    expect(formatWaiting(ago(24 * H), now)).toBe('1 day');
+    expect(formatWaiting(ago(53 * H), now)).toBe('2 days 5 hours');
+  });
+  it('never goes negative for a future timestamp', async () => {
+    const { formatWaiting } = await load();
+    expect(formatWaiting(new Date(now.getTime() + H), now)).toBe('under 1 hour');
+  });
+});
+
+describe('sendPendingReminderEmail()', () => {
+  it('lists applicants oldest-first, escapes student-typed text, caps rows, omits contact data', async () => {
+    vi.stubEnv('SMTP_HOST', '127.0.0.1');
+    sendMail.mockResolvedValue({});
+    const { sendPendingReminderEmail } = await load();
+    const now = new Date('2026-11-16T10:00:00Z');
+    const people = Array.from({ length: 23 }, (_, i) => ({ name: i === 0 ? '<script>x</script>' : `Student ${i}`, university: 'Uni <b>', country: 'UK', submittedAt: new Date(now.getTime() - (30 - i) * 3600_000) }));
+    await sendPendingReminderEmail('admin@unimate.test', people, now);
+    const mail = sendMail.mock.calls[0][0] as { to: string; subject: string; html: string };
+    expect(mail.to).toBe('admin@unimate.test');
+    expect(mail.subject).toBe('23 applications awaiting review — UniMate');
+    expect(mail.html).toContain('&lt;script&gt;x&lt;/script&gt;');
+    expect(mail.html).not.toContain('<script>');
+    expect(mail.html).toContain('Uni &lt;b&gt;');
+    expect(mail.html).toContain('+ 3 more in the admin portal');
+    expect(mail.html).not.toContain('Student 22');
+    expect(mail.html).toContain('http://localhost:3100/admin');
+  });
+  it('uses the singular when one application is waiting', async () => {
+    vi.stubEnv('SMTP_HOST', '127.0.0.1');
+    sendMail.mockResolvedValue({});
+    const { sendPendingReminderEmail } = await load();
+    await sendPendingReminderEmail('a@b.test', [{ name: 'Solo', university: 'U', country: 'C', submittedAt: new Date() }]);
+    expect((sendMail.mock.calls[0][0] as { subject: string }).subject).toBe('1 application awaiting review — UniMate');
+  });
+});

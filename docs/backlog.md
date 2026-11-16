@@ -40,3 +40,11 @@ Candidate improvements with the evidence behind them, so the next feature starts
 | B16 | **Per-attempt timeout on the submit** (e.g. ~90 s) | A stalled upload on weak data hangs on "Submitting…" until the browser gives up; `fetch` has no upload progress, so a slow-but-moving upload could be cut off. | XHR would give progress + timeout |
 | B17 | **Log server-side body/Blob failures** in `/api/student/register` | `request.formData()` (truncated upload) and `putFile` (Blob outage) throw uncaught: a 500 with no `student_error_logs` row. | try/catch + `log()` with `reason: 'body_unreadable' / 'blob_failed'` |
 | B18 | **Correlation id per submit** shared by client `client_*` rows and the server's `registration_submitted` | Would show "client tried 3 times, server saw 1". | Send an id in the FormData; store in log metadata |
+
+## Admin follow-up (left open on 2026-11-16)
+
+| # | Idea | Evidence / why | Notes |
+|---|---|---|---|
+| B19 | **More frequent / escalating pending-application reminders** (every ~3 h in working hours; "URGENT" after 24 h / 48 h waiting) | The daily reminder shipped 2026-11-16 is limited by Vercel Hobby (one run per day). Applications arriving after ~10 AM IST wait up to a day for a reminder. | Needs Vercel Pro or an external scheduler (GitHub Actions / cron-job.org) calling the same endpoint with `CRON_SECRET` |
+| B20 | **Send the instant registration alert to DB admins too** | `POST /api/student/register` emails only `ADMIN_EMAIL`; admins added via Manage Admins get the daily reminder but not the instant alert. | Reuse the recipient union from `/api/auth/pending-reminder` |
+

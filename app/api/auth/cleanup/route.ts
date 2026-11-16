@@ -1,23 +1,11 @@
-import { timingSafeEqual } from 'crypto';
 import { sql } from '@/lib/db';
+import { isCronAuthorized } from '@/lib/auth';
 import { archiveExpiredStudents } from '@/lib/archive';
 import { log } from '@/lib/logger';
 import { pruneRateLimits } from '@/lib/rate-limit';
 
 export async function GET(request: Request) {
-  // Fail closed: with no CRON_SECRET configured nobody can run the cleanup (an empty
-  // secret would otherwise match a request that sends no Authorization header at all).
-  const expected = process.env.CRON_SECRET;
-  if (!expected) {
-    console.error('CRON_SECRET is not set - refusing to run /api/auth/cleanup');
-    return new Response('Unauthorized', { status: 401 });
-  }
-  const header = request.headers.get('authorization') ?? '';
-  const incoming = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : '';
-  const valid =
-    incoming.length === expected.length &&
-    timingSafeEqual(Buffer.from(incoming), Buffer.from(expected));
-  if (!valid) {
+  if (!isCronAuthorized(request, '/api/auth/cleanup')) {
     return new Response('Unauthorized', { status: 401 });
   }
 

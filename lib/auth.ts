@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
+import { timingSafeEqual } from 'crypto';
 import { sql } from '@/lib/db';
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
@@ -56,4 +57,18 @@ export function makeSessionCookieOptions() {
     maxAge: 60 * 60 * 24 * 7,
     path: '/',
   };
+}
+
+// Bearer check for the Vercel cron endpoints. Fails closed: with no CRON_SECRET configured
+// nobody can run them (an empty secret would otherwise match a request that sends no
+// Authorization header at all).
+export function isCronAuthorized(request: Request, route: string): boolean {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) {
+    console.error(`CRON_SECRET is not set - refusing to run ${route}`);
+    return false;
+  }
+  const header = request.headers.get('authorization') ?? '';
+  const incoming = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : '';
+  return incoming.length === expected.length && timingSafeEqual(Buffer.from(incoming), Buffer.from(expected));
 }
